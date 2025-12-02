@@ -2,6 +2,7 @@ package com.autopickup.items;
 
 import com.autopickup.AutoPickupPlugin;
 import com.autopickup.managers.ConversionRecipe;
+import com.autopickup.utils.ConfigUtils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -84,10 +85,10 @@ public class OreConverterItem {
 
     private Component getConversionLore(ConversionRecipe recipe) {
         return Component.text("  " + recipe.getInputAmount() + "x ", NamedTextColor.WHITE)
-                .append(Component.text(formatMaterialName(recipe.getInputItem()), NamedTextColor.AQUA))
+                .append(Component.text(ConfigUtils.formatMaterialName(recipe.getInputItem()), NamedTextColor.AQUA))
                 .append(Component.text(" → ", NamedTextColor.GRAY))
                 .append(Component.text(recipe.getOutputAmount() + "x ", NamedTextColor.WHITE))
-                .append(Component.text(formatMaterialName(recipe.getOutputItem()), NamedTextColor.GREEN))
+                .append(Component.text(ConfigUtils.formatMaterialName(recipe.getOutputItem()), NamedTextColor.GREEN))
                 .decoration(TextDecoration.ITALIC, false);
     }
 
@@ -107,25 +108,5 @@ public class OreConverterItem {
 
     public NamespacedKey getConverterKey() {
         return converterKey;
-    }
-
-    private String formatMaterialName(Material material) {
-        String name = material.name().toLowerCase().replace("_", " ");
-        StringBuilder result = new StringBuilder();
-        boolean capitalizeNext = true;
-
-        for (char c : name.toCharArray()) {
-            if (c == ' ') {
-                result.append(c);
-                capitalizeNext = true;
-            } else if (capitalizeNext) {
-                result.append(Character.toUpperCase(c));
-                capitalizeNext = false;
-            } else {
-                result.append(c);
-            }
-        }
-
-        return result.toString();
     }
 }

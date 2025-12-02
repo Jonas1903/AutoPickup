@@ -4,6 +4,7 @@ import com.autopickup.AutoPickupPlugin;
 import org.bukkit.Material;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -98,7 +99,7 @@ public class ConverterManager {
         // Save as list format
         List<Map<String, Object>> recipeList = new ArrayList<>();
         for (ConversionRecipe recipe : recipes) {
-            Map<String, Object> recipeMap = new java.util.LinkedHashMap<>();
+            Map<String, Object> recipeMap = new LinkedHashMap<>();
             recipeMap.put("input-item", recipe.getInputItem().name());
             recipeMap.put("input-amount", recipe.getInputAmount());
             recipeMap.put("output-item", recipe.getOutputItem().name());

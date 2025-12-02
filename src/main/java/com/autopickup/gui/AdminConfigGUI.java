@@ -5,6 +5,7 @@ import com.autopickup.listeners.InventoryClickListener;
 import com.autopickup.managers.ConversionRecipe;
 import com.autopickup.managers.ConverterManager;
 import com.autopickup.managers.SmeltingManager;
+import com.autopickup.utils.ConfigUtils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -126,7 +127,6 @@ public class AdminConfigGUI {
      * [   ] [DEL] [   ] [   ] [SAVE] [   ] [   ] [BACK] [   ]
      */
     public void openEditRecipeGUI(Player player, InventoryClickListener.RecipeEditData editData) {
-        String title = editData.isNewRecipe() ? "Add New Recipe" : "Edit Recipe";
         Inventory gui = Bukkit.createInventory(null, 27, Component.text(EDIT_RECIPE_GUI_TITLE, NamedTextColor.AQUA)
                 .decoration(TextDecoration.BOLD, true));
 
@@ -269,7 +269,7 @@ public class AdminConfigGUI {
             List<Component> lore = new ArrayList<>();
             lore.add(Component.empty());
             lore.add(Component.text("Item: ", NamedTextColor.GRAY)
-                    .append(Component.text(formatMaterialName(recipe.getInputItem()), NamedTextColor.WHITE))
+                    .append(Component.text(ConfigUtils.formatMaterialName(recipe.getInputItem()), NamedTextColor.WHITE))
                     .decoration(TextDecoration.ITALIC, false));
             lore.add(Component.text("Amount: ", NamedTextColor.GRAY)
                     .append(Component.text(recipe.getInputAmount(), NamedTextColor.WHITE))
@@ -298,7 +298,7 @@ public class AdminConfigGUI {
             List<Component> lore = new ArrayList<>();
             lore.add(Component.empty());
             lore.add(Component.text("Item: ", NamedTextColor.GRAY)
-                    .append(Component.text(formatMaterialName(recipe.getOutputItem()), NamedTextColor.WHITE))
+                    .append(Component.text(ConfigUtils.formatMaterialName(recipe.getOutputItem()), NamedTextColor.WHITE))
                     .decoration(TextDecoration.ITALIC, false));
             lore.add(Component.text("Amount: ", NamedTextColor.GRAY)
                     .append(Component.text(recipe.getOutputAmount(), NamedTextColor.WHITE))
@@ -391,7 +391,7 @@ public class AdminConfigGUI {
             List<Component> lore = new ArrayList<>();
             lore.add(Component.empty());
             lore.add(Component.text("Current: ", NamedTextColor.GRAY)
-                    .append(Component.text(formatMaterialName(currentInput), NamedTextColor.WHITE))
+                    .append(Component.text(ConfigUtils.formatMaterialName(currentInput), NamedTextColor.WHITE))
                     .decoration(TextDecoration.ITALIC, false));
             lore.add(Component.text("Amount: ", NamedTextColor.GRAY)
                     .append(Component.text(amount, NamedTextColor.WHITE))
@@ -420,7 +420,7 @@ public class AdminConfigGUI {
             List<Component> lore = new ArrayList<>();
             lore.add(Component.empty());
             lore.add(Component.text("Current: ", NamedTextColor.GRAY)
-                    .append(Component.text(formatMaterialName(currentOutput), NamedTextColor.WHITE))
+                    .append(Component.text(ConfigUtils.formatMaterialName(currentOutput), NamedTextColor.WHITE))
                     .decoration(TextDecoration.ITALIC, false));
             lore.add(Component.text("Amount: ", NamedTextColor.GRAY)
                     .append(Component.text(amount, NamedTextColor.WHITE))
@@ -580,14 +580,14 @@ public class AdminConfigGUI {
             NamedTextColor statusColor = enabled ? NamedTextColor.GREEN : NamedTextColor.RED;
             String status = enabled ? "ENABLED" : "DISABLED";
 
-            meta.displayName(Component.text(formatMaterialName(input), NamedTextColor.GOLD)
+            meta.displayName(Component.text(ConfigUtils.formatMaterialName(input), NamedTextColor.GOLD)
                     .decoration(TextDecoration.ITALIC, false)
                     .decoration(TextDecoration.BOLD, true));
 
             List<Component> lore = new ArrayList<>();
             lore.add(Component.empty());
             lore.add(Component.text("Smelts to: ", NamedTextColor.GRAY)
-                    .append(Component.text(formatMaterialName(output), NamedTextColor.WHITE))
+                    .append(Component.text(ConfigUtils.formatMaterialName(output), NamedTextColor.WHITE))
                     .decoration(TextDecoration.ITALIC, false));
             lore.add(Component.empty());
             lore.add(Component.text("Status: ", NamedTextColor.GRAY)
@@ -663,25 +663,5 @@ public class AdminConfigGUI {
         }
 
         return item;
-    }
-
-    private String formatMaterialName(Material material) {
-        String name = material.name().toLowerCase().replace("_", " ");
-        StringBuilder result = new StringBuilder();
-        boolean capitalizeNext = true;
-
-        for (char c : name.toCharArray()) {
-            if (c == ' ') {
-                result.append(c);
-                capitalizeNext = true;
-            } else if (capitalizeNext) {
-                result.append(Character.toUpperCase(c));
-                capitalizeNext = false;
-            } else {
-                result.append(c);
-            }
-        }
-
-        return result.toString();
     }
 }
