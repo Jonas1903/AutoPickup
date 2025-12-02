@@ -2,6 +2,7 @@ package com.autopickup.listeners;
 
 import com.autopickup.AutoPickupPlugin;
 import com.autopickup.items.OreConverterItem;
+import com.autopickup.managers.ConversionRecipe;
 import com.autopickup.managers.ConverterManager;
 import com.autopickup.managers.PlayerDataManager;
 import com.autopickup.managers.SmeltingManager;
@@ -67,12 +68,15 @@ public class BlockBreakListener implements Listener {
         for (ItemStack drop : drops) {
             ItemStack finalDrop = drop.clone();
 
-            // Check for ore converter in offhand
-            if (hasConverter && finalDrop.getType() == cm.getInputItem()) {
-                finalDrop = processConverter(finalDrop, cm, player);
-                // If fully converted, skip to next drop
-                if (finalDrop == null) {
-                    continue;
+            // Check for ore converter in offhand - check ALL recipes
+            if (hasConverter) {
+                ConversionRecipe recipe = cm.findRecipeForItem(finalDrop.getType());
+                if (recipe != null) {
+                    finalDrop = processConverter(finalDrop, recipe, player);
+                    // If fully converted, skip to next drop
+                    if (finalDrop == null) {
+                        continue;
+                    }
                 }
             }
 
@@ -99,14 +103,14 @@ public class BlockBreakListener implements Listener {
         }
     }
 
-    private ItemStack processConverter(ItemStack drop, ConverterManager cm, Player player) {
+    private ItemStack processConverter(ItemStack drop, ConversionRecipe recipe, Player player) {
         int totalAmount = drop.getAmount();
-        int conversions = cm.getConversionCount(totalAmount);
-        int remainder = cm.getRemainder(totalAmount);
+        int conversions = recipe.getConversionCount(totalAmount);
+        int remainder = recipe.getRemainder(totalAmount);
 
         if (conversions > 0) {
             // Give converted items
-            ItemStack convertedItem = new ItemStack(cm.getOutputItem(), conversions * cm.getOutputAmount());
+            ItemStack convertedItem = new ItemStack(recipe.getOutputItem(), conversions * recipe.getOutputAmount());
             HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(convertedItem);
 
             // Drop any converted items that couldn't fit

@@ -2,15 +2,18 @@ package com.autopickup.managers;
 
 import com.autopickup.AutoPickupPlugin;
 import org.bukkit.Material;
-import org.bukkit.inventory.ItemStack;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 public class ConverterManager {
 
     private final AutoPickupPlugin plugin;
-    private Material inputItem;
-    private int inputAmount;
-    private Material outputItem;
-    private int outputAmount;
+    private final List<ConversionRecipe> recipes = new ArrayList<>();
+    
+    // Maximum number of recipes allowed
+    public static final int MAX_RECIPES = 8;
 
     public ConverterManager(AutoPickupPlugin plugin) {
         this.plugin = plugin;
@@ -18,90 +21,199 @@ public class ConverterManager {
     }
 
     public void loadConfig() {
+        recipes.clear();
+        
+        // Check if new format exists (recipes list)
+        if (plugin.getConfig().contains("ore-converter.recipes")) {
+            loadRecipesFromList();
+        } else {
+            // Legacy format: single recipe
+            loadLegacyRecipe();
+        }
+        
+        // Ensure at least one default recipe if none loaded
+        if (recipes.isEmpty()) {
+            recipes.add(new ConversionRecipe(Material.DIAMOND, 64, Material.AMETHYST_SHARD, 10));
+            plugin.getLogger().info("No recipes found, added default recipe");
+        }
+        
+        plugin.getLogger().info("Loaded " + recipes.size() + " ore converter recipe(s)");
+    }
+    
+    private void loadRecipesFromList() {
+        List<Map<?, ?>> recipeList = plugin.getConfig().getMapList("ore-converter.recipes");
+        
+        for (Map<?, ?> recipeMap : recipeList) {
+            try {
+                String inputItemStr = (String) recipeMap.get("input-item");
+                Object inputAmountObj = recipeMap.get("input-amount");
+                String outputItemStr = (String) recipeMap.get("output-item");
+                Object outputAmountObj = recipeMap.get("output-amount");
+                
+                Material inputItem = Material.valueOf(inputItemStr.toUpperCase());
+                Material outputItem = Material.valueOf(outputItemStr.toUpperCase());
+                int inputAmount = inputAmountObj instanceof Number ? ((Number) inputAmountObj).intValue() : 1;
+                int outputAmount = outputAmountObj instanceof Number ? ((Number) outputAmountObj).intValue() : 1;
+                
+                recipes.add(new ConversionRecipe(inputItem, inputAmount, outputItem, outputAmount));
+            } catch (Exception e) {
+                plugin.getLogger().warning("Failed to load a recipe from config: " + e.getMessage());
+            }
+        }
+    }
+    
+    private void loadLegacyRecipe() {
         String inputItemStr = plugin.getConfig().getString("ore-converter.input-item", "DIAMOND");
         String outputItemStr = plugin.getConfig().getString("ore-converter.output-item", "AMETHYST_SHARD");
-
+        int inputAmount = plugin.getConfig().getInt("ore-converter.input-amount", 64);
+        int outputAmount = plugin.getConfig().getInt("ore-converter.output-amount", 10);
+        
+        Material inputItem;
+        Material outputItem;
+        
         try {
             inputItem = Material.valueOf(inputItemStr.toUpperCase());
         } catch (IllegalArgumentException e) {
             inputItem = Material.DIAMOND;
             plugin.getLogger().warning("Invalid input item in config, defaulting to DIAMOND");
         }
-
+        
         try {
             outputItem = Material.valueOf(outputItemStr.toUpperCase());
         } catch (IllegalArgumentException e) {
             outputItem = Material.AMETHYST_SHARD;
             plugin.getLogger().warning("Invalid output item in config, defaulting to AMETHYST_SHARD");
         }
-
-        inputAmount = plugin.getConfig().getInt("ore-converter.input-amount", 64);
-        outputAmount = plugin.getConfig().getInt("ore-converter.output-amount", 10);
         
-        plugin.getLogger().info("Loaded ore converter config: " + inputAmount + "x " + inputItem.name() + " -> " + outputAmount + "x " + outputItem.name());
+        recipes.add(new ConversionRecipe(inputItem, inputAmount, outputItem, outputAmount));
     }
 
-    public void saveConfig() {
-        plugin.getConfig().set("ore-converter.input-item", inputItem.name());
-        plugin.getConfig().set("ore-converter.input-amount", inputAmount);
-        plugin.getConfig().set("ore-converter.output-item", outputItem.name());
-        plugin.getConfig().set("ore-converter.output-amount", outputAmount);
+    public void saveRecipes() {
+        // Clear old format
+        plugin.getConfig().set("ore-converter.input-item", null);
+        plugin.getConfig().set("ore-converter.input-amount", null);
+        plugin.getConfig().set("ore-converter.output-item", null);
+        plugin.getConfig().set("ore-converter.output-amount", null);
+        
+        // Save as list format
+        List<Map<String, Object>> recipeList = new ArrayList<>();
+        for (ConversionRecipe recipe : recipes) {
+            Map<String, Object> recipeMap = new java.util.LinkedHashMap<>();
+            recipeMap.put("input-item", recipe.getInputItem().name());
+            recipeMap.put("input-amount", recipe.getInputAmount());
+            recipeMap.put("output-item", recipe.getOutputItem().name());
+            recipeMap.put("output-amount", recipe.getOutputAmount());
+            recipeList.add(recipeMap);
+        }
+        
+        plugin.getConfig().set("ore-converter.recipes", recipeList);
         plugin.saveConfig();
-        plugin.getLogger().info("Saved ore converter config: " + inputAmount + "x " + inputItem.name() + " -> " + outputAmount + "x " + outputItem.name());
+        plugin.getLogger().info("Saved " + recipes.size() + " ore converter recipe(s)");
     }
-
-    public Material getInputItem() {
-        return inputItem;
+    
+    /**
+     * Get all conversion recipes.
+     */
+    public List<ConversionRecipe> getRecipes() {
+        return new ArrayList<>(recipes);
     }
-
-    public void setInputItem(Material inputItem) {
-        this.inputItem = inputItem;
-        saveConfig();
+    
+    /**
+     * Get a recipe by index.
+     */
+    public ConversionRecipe getRecipe(int index) {
+        if (index >= 0 && index < recipes.size()) {
+            return recipes.get(index);
+        }
+        return null;
     }
-
-    public int getInputAmount() {
-        return inputAmount;
+    
+    /**
+     * Add a new recipe.
+     */
+    public boolean addRecipe(ConversionRecipe recipe) {
+        if (recipes.size() >= MAX_RECIPES) {
+            return false;
+        }
+        recipes.add(recipe);
+        saveRecipes();
+        return true;
     }
-
-    public void setInputAmount(int inputAmount) {
-        this.inputAmount = Math.max(1, Math.min(64, inputAmount));
-        saveConfig();
+    
+    /**
+     * Update an existing recipe.
+     */
+    public boolean updateRecipe(int index, ConversionRecipe recipe) {
+        if (index >= 0 && index < recipes.size()) {
+            recipes.set(index, recipe);
+            saveRecipes();
+            return true;
+        }
+        return false;
     }
-
-    public Material getOutputItem() {
-        return outputItem;
+    
+    /**
+     * Remove a recipe by index.
+     */
+    public boolean removeRecipe(int index) {
+        if (index >= 0 && index < recipes.size()) {
+            recipes.remove(index);
+            saveRecipes();
+            return true;
+        }
+        return false;
     }
-
-    public void setOutputItem(Material outputItem) {
-        this.outputItem = outputItem;
-        saveConfig();
+    
+    /**
+     * Get the number of recipes.
+     */
+    public int getRecipeCount() {
+        return recipes.size();
     }
-
-    public int getOutputAmount() {
-        return outputAmount;
-    }
-
-    public void setOutputAmount(int outputAmount) {
-        this.outputAmount = Math.max(1, Math.min(64, outputAmount));
-        saveConfig();
-    }
-
-    public boolean canConvert(ItemStack item) {
-        return item != null && item.getType() == inputItem && item.getAmount() >= inputAmount;
-    }
-
-    public ItemStack convert(ItemStack item) {
-        if (canConvert(item)) {
-            return new ItemStack(outputItem, outputAmount);
+    
+    /**
+     * Find a recipe that matches the given item type.
+     */
+    public ConversionRecipe findRecipeForItem(Material itemType) {
+        for (ConversionRecipe recipe : recipes) {
+            if (recipe.getInputItem() == itemType) {
+                return recipe;
+            }
         }
         return null;
     }
 
-    public int getConversionCount(int itemAmount) {
-        return itemAmount / inputAmount;
+    // ===== Legacy methods for backward compatibility =====
+    
+    /**
+     * @deprecated Use getRecipes() instead
+     */
+    @Deprecated
+    public Material getInputItem() {
+        return recipes.isEmpty() ? Material.DIAMOND : recipes.get(0).getInputItem();
     }
 
-    public int getRemainder(int itemAmount) {
-        return itemAmount % inputAmount;
+    /**
+     * @deprecated Use getRecipes() instead
+     */
+    @Deprecated
+    public int getInputAmount() {
+        return recipes.isEmpty() ? 64 : recipes.get(0).getInputAmount();
+    }
+
+    /**
+     * @deprecated Use getRecipes() instead
+     */
+    @Deprecated
+    public Material getOutputItem() {
+        return recipes.isEmpty() ? Material.AMETHYST_SHARD : recipes.get(0).getOutputItem();
+    }
+
+    /**
+     * @deprecated Use getRecipes() instead
+     */
+    @Deprecated
+    public int getOutputAmount() {
+        return recipes.isEmpty() ? 10 : recipes.get(0).getOutputAmount();
     }
 }
