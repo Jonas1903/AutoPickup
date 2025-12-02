@@ -1,0 +1,33 @@
+# AutoPickup Configuration
+
+# Default smelting recipes (can be modified via admin GUI)
+auto-smelt:
+  enabled-items:
+    - IRON_ORE
+    - DEEPSLATE_IRON_ORE
+    - GOLD_ORE
+    - DEEPSLATE_GOLD_ORE
+    - COPPER_ORE
+    - DEEPSLATE_COPPER_ORE
+    - ANCIENT_DEBRIS
+
+# Ore converter settings
+ore-converter:
+  input-item: DIAMOND
+  input-amount: 64
+  output-item: AMETHYST_SHARD
+  output-amount: 10
+
+# Messages
+messages:
+  prefix: "&8[&6AutoPickup&8] "
+  auto-pickup-enabled: "&aAuto Pickup enabled!"
+  auto-pickup-disabled: "&cAuto Pickup disabled!"
+  auto-smelt-enabled: "&aAuto Smelt enabled!"
+  auto-smelt-disabled: "&cAuto Smelt disabled!"
+  no-permission: "&cYou don't have permission to do that!"
+  converter-received: "&aYou received the Ore Converter item!"
+  converter-given: "&aGave Ore Converter to %player%!"
+  config-reloaded: "&aConfiguration reloaded!"
+  player-not-found: "&cPlayer not found!"
+  usage: "&cUsage: /autopickup [admin|give <player>|reload]"
