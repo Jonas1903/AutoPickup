@@ -9,6 +9,9 @@ auto-smelt:
     - DEEPSLATE_GOLD_ORE
     - COPPER_ORE
     - DEEPSLATE_COPPER_ORE
+    - RAW_IRON
+    - RAW_GOLD
+    - RAW_COPPER
     - ANCIENT_DEBRIS
 
 # Ore converter settings - supports multiple recipes

@@ -2,16 +2,22 @@ package com.autopickup.managers;
 
 import com.autopickup.AutoPickupPlugin;
 import org.bukkit.Material;
+import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 public class ConverterManager {
 
     private final AutoPickupPlugin plugin;
     private final List<ConversionRecipe> recipes = new ArrayList<>();
+    
+    // Accumulator system - tracks mined items per player per material
+    private final Map<UUID, Map<Material, Integer>> playerAccumulators = new HashMap<>();
     
     // Maximum number of recipes allowed
     public static final int MAX_RECIPES = 8;
@@ -48,15 +54,27 @@ public class ConverterManager {
             try {
                 String inputItemStr = (String) recipeMap.get("input-item");
                 Object inputAmountObj = recipeMap.get("input-amount");
-                String outputItemStr = (String) recipeMap.get("output-item");
                 Object outputAmountObj = recipeMap.get("output-amount");
                 
                 Material inputItem = Material.valueOf(inputItemStr.toUpperCase());
-                Material outputItem = Material.valueOf(outputItemStr.toUpperCase());
                 int inputAmount = inputAmountObj instanceof Number ? ((Number) inputAmountObj).intValue() : 1;
                 int outputAmount = outputAmountObj instanceof Number ? ((Number) outputAmountObj).intValue() : 1;
                 
-                recipes.add(new ConversionRecipe(inputItem, inputAmount, outputItem, outputAmount));
+                // Try to load full ItemStack first, fallback to Material
+                ItemStack outputItemStack;
+                if (recipeMap.containsKey("output-itemstack") && recipeMap.get("output-itemstack") instanceof Map) {
+                    // ItemStack is serialized as a map in YAML
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> itemStackMap = (Map<String, Object>) recipeMap.get("output-itemstack");
+                    outputItemStack = ItemStack.deserialize(itemStackMap);
+                } else {
+                    // Legacy fallback - use output-item Material
+                    String outputItemStr = (String) recipeMap.get("output-item");
+                    Material outputItem = outputItemStr != null ? Material.valueOf(outputItemStr.toUpperCase()) : Material.AMETHYST_SHARD;
+                    outputItemStack = new ItemStack(outputItem);
+                }
+                
+                recipes.add(new ConversionRecipe(inputItem, inputAmount, outputItemStack, outputAmount));
             } catch (Exception e) {
                 plugin.getLogger().warning("Failed to load a recipe from config: " + e.getMessage());
             }
@@ -96,14 +114,17 @@ public class ConverterManager {
         plugin.getConfig().set("ore-converter.output-item", null);
         plugin.getConfig().set("ore-converter.output-amount", null);
         
-        // Save as list format
+        // Save as list format with full ItemStack support
         List<Map<String, Object>> recipeList = new ArrayList<>();
         for (ConversionRecipe recipe : recipes) {
             Map<String, Object> recipeMap = new LinkedHashMap<>();
             recipeMap.put("input-item", recipe.getInputItem().name());
             recipeMap.put("input-amount", recipe.getInputAmount());
-            recipeMap.put("output-item", recipe.getOutputItem().name());
             recipeMap.put("output-amount", recipe.getOutputAmount());
+            // Save full ItemStack (serialized)
+            recipeMap.put("output-itemstack", recipe.getOutputItemStack().serialize());
+            // Also save output-item for backward compatibility/readability
+            recipeMap.put("output-item", recipe.getOutputItem().name());
             recipeList.add(recipeMap);
         }
         
@@ -111,6 +132,75 @@ public class ConverterManager {
         plugin.saveConfig();
         plugin.getLogger().info("Saved " + recipes.size() + " ore converter recipe(s)");
     }
+    
+    // ===== Accumulator System =====
+    
+    /**
+     * Add items to a player's accumulator for a specific material.
+     */
+    public void addToAccumulator(UUID uuid, Material material, int amount) {
+        playerAccumulators.computeIfAbsent(uuid, k -> new HashMap<>());
+        Map<Material, Integer> playerAcc = playerAccumulators.get(uuid);
+        int current = playerAcc.getOrDefault(material, 0);
+        playerAcc.put(material, current + amount);
+    }
+    
+    /**
+     * Get the accumulated amount for a player and material.
+     */
+    public int getAccumulatedAmount(UUID uuid, Material material) {
+        Map<Material, Integer> playerAcc = playerAccumulators.get(uuid);
+        if (playerAcc == null) return 0;
+        return playerAcc.getOrDefault(material, 0);
+    }
+    
+    /**
+     * Consume items from a player's accumulator.
+     */
+    public void consumeFromAccumulator(UUID uuid, Material material, int amount) {
+        Map<Material, Integer> playerAcc = playerAccumulators.get(uuid);
+        if (playerAcc != null) {
+            int current = playerAcc.getOrDefault(material, 0);
+            playerAcc.put(material, Math.max(0, current - amount));
+        }
+    }
+    
+    /**
+     * Set the accumulator value directly (used for setting remainder after conversion).
+     */
+    public void setAccumulator(UUID uuid, Material material, int amount) {
+        playerAccumulators.computeIfAbsent(uuid, k -> new HashMap<>());
+        Map<Material, Integer> playerAcc = playerAccumulators.get(uuid);
+        playerAcc.put(material, Math.max(0, amount));
+    }
+    
+    /**
+     * Clear all accumulators for a player.
+     */
+    public void clearAccumulators(UUID uuid) {
+        playerAccumulators.remove(uuid);
+    }
+    
+    /**
+     * Clear a specific material accumulator for a player.
+     */
+    public void clearAccumulator(UUID uuid, Material material) {
+        Map<Material, Integer> playerAcc = playerAccumulators.get(uuid);
+        if (playerAcc != null) {
+            playerAcc.remove(material);
+        }
+    }
+    
+    /**
+     * Get all accumulated materials for a player.
+     */
+    public Map<Material, Integer> getPlayerAccumulators(UUID uuid) {
+        Map<Material, Integer> playerAcc = playerAccumulators.get(uuid);
+        if (playerAcc == null) return new HashMap<>();
+        return new HashMap<>(playerAcc);
+    }
+    
+    // ===== Recipe Management =====
     
     /**
      * Get all conversion recipes.
