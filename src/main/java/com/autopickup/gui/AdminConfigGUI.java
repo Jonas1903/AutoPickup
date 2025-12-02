@@ -9,6 +9,7 @@ import com.autopickup.utils.ConfigUtils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -23,6 +24,7 @@ import java.util.Map;
 public class AdminConfigGUI {
 
     private final AutoPickupPlugin plugin;
+    private static final PlainTextComponentSerializer PLAIN = PlainTextComponentSerializer.plainText();
     public static final String MAIN_GUI_TITLE = "Admin Configuration";
     public static final String CONVERTER_GUI_TITLE = "Converter Recipes";
     public static final String EDIT_RECIPE_GUI_TITLE = "Edit Recipe";
@@ -454,8 +456,7 @@ public class AdminConfigGUI {
             return "None";
         }
         if (item.hasItemMeta() && item.getItemMeta().hasDisplayName()) {
-            return net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
-                    .serialize(item.getItemMeta().displayName());
+            return PLAIN.serialize(item.getItemMeta().displayName());
         }
         return ConfigUtils.formatMaterialName(item.getType());
     }

@@ -21,6 +21,9 @@ public class ConverterManager {
     
     // Maximum number of recipes allowed
     public static final int MAX_RECIPES = 8;
+    
+    // Default output material for backward compatibility
+    private static final Material DEFAULT_OUTPUT_MATERIAL = Material.AMETHYST_SHARD;
 
     public ConverterManager(AutoPickupPlugin plugin) {
         this.plugin = plugin;
@@ -40,7 +43,7 @@ public class ConverterManager {
         
         // Ensure at least one default recipe if none loaded
         if (recipes.isEmpty()) {
-            recipes.add(new ConversionRecipe(Material.DIAMOND, 64, Material.AMETHYST_SHARD, 10));
+            recipes.add(new ConversionRecipe(Material.DIAMOND, 64, DEFAULT_OUTPUT_MATERIAL, 10));
             plugin.getLogger().info("No recipes found, added default recipe");
         }
         
@@ -70,7 +73,7 @@ public class ConverterManager {
                 } else {
                     // Legacy fallback - use output-item Material
                     String outputItemStr = (String) recipeMap.get("output-item");
-                    Material outputItem = outputItemStr != null ? Material.valueOf(outputItemStr.toUpperCase()) : Material.AMETHYST_SHARD;
+                    Material outputItem = outputItemStr != null ? Material.valueOf(outputItemStr.toUpperCase()) : DEFAULT_OUTPUT_MATERIAL;
                     outputItemStack = new ItemStack(outputItem);
                 }
                 
@@ -100,8 +103,8 @@ public class ConverterManager {
         try {
             outputItem = Material.valueOf(outputItemStr.toUpperCase());
         } catch (IllegalArgumentException e) {
-            outputItem = Material.AMETHYST_SHARD;
-            plugin.getLogger().warning("Invalid output item in config, defaulting to AMETHYST_SHARD");
+            outputItem = DEFAULT_OUTPUT_MATERIAL;
+            plugin.getLogger().warning("Invalid output item in config, defaulting to " + DEFAULT_OUTPUT_MATERIAL.name());
         }
         
         recipes.add(new ConversionRecipe(inputItem, inputAmount, outputItem, outputAmount));
@@ -297,7 +300,7 @@ public class ConverterManager {
      */
     @Deprecated
     public Material getOutputItem() {
-        return recipes.isEmpty() ? Material.AMETHYST_SHARD : recipes.get(0).getOutputItem();
+        return recipes.isEmpty() ? DEFAULT_OUTPUT_MATERIAL : recipes.get(0).getOutputItem();
     }
 
     /**

@@ -74,6 +74,9 @@ public class InventoryClickListener implements Listener {
          * Set the full output ItemStack (for custom items).
          */
         public void setOutputItemStack(ItemStack itemStack) {
+            if (itemStack == null) {
+                throw new IllegalArgumentException("itemStack cannot be null");
+            }
             this.outputItemStack = itemStack.clone();
             this.outputItemStack.setAmount(1); // Store as single item
         }

@@ -16,6 +16,9 @@ public class ConversionRecipe {
     public ConversionRecipe(Material inputItem, int inputAmount, ItemStack outputItemStack, int outputAmount) {
         this.inputItem = inputItem;
         this.inputAmount = Math.max(1, Math.min(64, inputAmount));
+        if (outputItemStack == null) {
+            throw new IllegalArgumentException("outputItemStack cannot be null");
+        }
         this.outputItemStack = outputItemStack.clone();
         this.outputItemStack.setAmount(1); // Store as single item
         this.outputAmount = Math.max(1, Math.min(64, outputAmount));
@@ -69,6 +72,9 @@ public class ConversionRecipe {
      * Set the full output ItemStack (for custom items).
      */
     public void setOutputItemStack(ItemStack itemStack) {
+        if (itemStack == null) {
+            throw new IllegalArgumentException("itemStack cannot be null");
+        }
         this.outputItemStack = itemStack.clone();
         this.outputItemStack.setAmount(1); // Store as single item
     }
