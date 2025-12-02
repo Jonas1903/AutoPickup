@@ -2,6 +2,7 @@ package com.autopickup.utils;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import org.bukkit.Material;
 import org.bukkit.configuration.file.FileConfiguration;
 
 public class ConfigUtils {
@@ -26,5 +27,29 @@ public class ConfigUtils {
         String message = getMessage(config, path);
         message = message.replace(placeholder, value);
         return colorize(message);
+    }
+
+    /**
+     * Formats a Material name to a human-readable string.
+     * e.g., IRON_INGOT -> "Iron Ingot"
+     */
+    public static String formatMaterialName(Material material) {
+        String name = material.name().toLowerCase().replace("_", " ");
+        StringBuilder result = new StringBuilder();
+        boolean capitalizeNext = true;
+
+        for (char c : name.toCharArray()) {
+            if (c == ' ') {
+                result.append(c);
+                capitalizeNext = true;
+            } else if (capitalizeNext) {
+                result.append(Character.toUpperCase(c));
+                capitalizeNext = false;
+            } else {
+                result.append(c);
+            }
+        }
+
+        return result.toString();
     }
 }

@@ -1,6 +1,8 @@
 package com.autopickup.items;
 
 import com.autopickup.AutoPickupPlugin;
+import com.autopickup.managers.ConversionRecipe;
+import com.autopickup.utils.ConfigUtils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -42,9 +44,29 @@ public class OreConverterItem {
             lore.add(Component.text("to convert ores automatically!", NamedTextColor.GRAY)
                     .decoration(TextDecoration.ITALIC, false));
             lore.add(Component.empty());
-            lore.add(Component.text("Current Conversion:", NamedTextColor.YELLOW)
-                    .decoration(TextDecoration.ITALIC, false));
-            lore.add(getConversionLore());
+            
+            // Show all conversion recipes
+            List<ConversionRecipe> recipes = plugin.getConverterManager().getRecipes();
+            if (recipes.isEmpty()) {
+                lore.add(Component.text("No recipes configured.", NamedTextColor.RED)
+                        .decoration(TextDecoration.ITALIC, false));
+            } else {
+                lore.add(Component.text("Active Conversions:", NamedTextColor.YELLOW)
+                        .decoration(TextDecoration.ITALIC, false));
+                
+                // Show up to 5 recipes in lore to keep it readable
+                int displayCount = Math.min(recipes.size(), 5);
+                for (int i = 0; i < displayCount; i++) {
+                    ConversionRecipe recipe = recipes.get(i);
+                    lore.add(getConversionLore(recipe));
+                }
+                
+                if (recipes.size() > 5) {
+                    lore.add(Component.text("  ... and " + (recipes.size() - 5) + " more", NamedTextColor.GRAY)
+                            .decoration(TextDecoration.ITALIC, true));
+                }
+            }
+            
             lore.add(Component.empty());
             lore.add(Component.text("✦ Magical Item ✦", NamedTextColor.LIGHT_PURPLE)
                     .decoration(TextDecoration.ITALIC, false));
@@ -61,17 +83,12 @@ public class OreConverterItem {
         return item;
     }
 
-    private Component getConversionLore() {
-        Material inputItem = plugin.getConverterManager().getInputItem();
-        int inputAmount = plugin.getConverterManager().getInputAmount();
-        Material outputItem = plugin.getConverterManager().getOutputItem();
-        int outputAmount = plugin.getConverterManager().getOutputAmount();
-
-        return Component.text(inputAmount + "x ", NamedTextColor.WHITE)
-                .append(Component.text(formatMaterialName(inputItem), NamedTextColor.AQUA))
+    private Component getConversionLore(ConversionRecipe recipe) {
+        return Component.text("  " + recipe.getInputAmount() + "x ", NamedTextColor.WHITE)
+                .append(Component.text(ConfigUtils.formatMaterialName(recipe.getInputItem()), NamedTextColor.AQUA))
                 .append(Component.text(" → ", NamedTextColor.GRAY))
-                .append(Component.text(outputAmount + "x ", NamedTextColor.WHITE))
-                .append(Component.text(formatMaterialName(outputItem), NamedTextColor.GREEN))
+                .append(Component.text(recipe.getOutputAmount() + "x ", NamedTextColor.WHITE))
+                .append(Component.text(ConfigUtils.formatMaterialName(recipe.getOutputItem()), NamedTextColor.GREEN))
                 .decoration(TextDecoration.ITALIC, false);
     }
 
@@ -91,25 +108,5 @@ public class OreConverterItem {
 
     public NamespacedKey getConverterKey() {
         return converterKey;
-    }
-
-    private String formatMaterialName(Material material) {
-        String name = material.name().toLowerCase().replace("_", " ");
-        StringBuilder result = new StringBuilder();
-        boolean capitalizeNext = true;
-
-        for (char c : name.toCharArray()) {
-            if (c == ' ') {
-                result.append(c);
-                capitalizeNext = true;
-            } else if (capitalizeNext) {
-                result.append(Character.toUpperCase(c));
-                capitalizeNext = false;
-            } else {
-                result.append(c);
-            }
-        }
-
-        return result.toString();
     }
 }

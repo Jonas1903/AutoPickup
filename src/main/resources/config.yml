@@ -11,12 +11,21 @@ auto-smelt:
     - DEEPSLATE_COPPER_ORE
     - ANCIENT_DEBRIS
 
-# Ore converter settings
+# Ore converter settings - supports multiple recipes
 ore-converter:
-  input-item: DIAMOND
-  input-amount: 64
-  output-item: AMETHYST_SHARD
-  output-amount: 10
+  recipes:
+    - input-item: DIAMOND
+      input-amount: 64
+      output-item: AMETHYST_SHARD
+      output-amount: 10
+    - input-item: IRON_INGOT
+      input-amount: 32
+      output-item: DIAMOND
+      output-amount: 1
+    - input-item: GOLD_INGOT
+      input-amount: 16
+      output-item: EMERALD
+      output-amount: 1
 
 # Messages
 messages:
@@ -31,3 +40,7 @@ messages:
   config-reloaded: "&aConfiguration reloaded!"
   player-not-found: "&cPlayer not found!"
   usage: "&cUsage: /autopickup [admin|give <player>|reload]"
+  recipe-added: "&aRecipe added successfully!"
+  recipe-updated: "&aRecipe updated successfully!"
+  recipe-deleted: "&cRecipe deleted!"
+  recipe-limit-reached: "&cMaximum number of recipes reached!"

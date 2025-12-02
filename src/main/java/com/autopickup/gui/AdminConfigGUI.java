@@ -1,8 +1,11 @@
 package com.autopickup.gui;
 
 import com.autopickup.AutoPickupPlugin;
+import com.autopickup.listeners.InventoryClickListener;
+import com.autopickup.managers.ConversionRecipe;
 import com.autopickup.managers.ConverterManager;
 import com.autopickup.managers.SmeltingManager;
+import com.autopickup.utils.ConfigUtils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -21,10 +24,9 @@ public class AdminConfigGUI {
 
     private final AutoPickupPlugin plugin;
     public static final String MAIN_GUI_TITLE = "Admin Configuration";
-    public static final String CONVERTER_GUI_TITLE = "Ore Converter Config";
+    public static final String CONVERTER_GUI_TITLE = "Converter Recipes";
+    public static final String EDIT_RECIPE_GUI_TITLE = "Edit Recipe";
     public static final String SMELTING_GUI_TITLE = "Auto Smelt Config";
-    public static final String INPUT_AMOUNT_GUI_TITLE = "Set Input Amount";
-    public static final String OUTPUT_AMOUNT_GUI_TITLE = "Set Output Amount";
 
     public AdminConfigGUI(AutoPickupPlugin plugin) {
         this.plugin = plugin;
@@ -49,38 +51,122 @@ public class AdminConfigGUI {
         player.openInventory(gui);
     }
 
+    /**
+     * Opens the multi-recipe converter GUI (54 slots)
+     * Layout:
+     * [Info] [   ] [   ] [   ] [   ] [   ] [   ] [   ] [   ]
+     * [   ] [IN1] [ → ] [OUT1] [   ] [IN2] [ → ] [OUT2] [   ]
+     * [   ] [IN3] [ → ] [OUT3] [   ] [IN4] [ → ] [OUT4] [   ]
+     * [   ] [IN5] [ → ] [OUT5] [   ] [IN6] [ → ] [OUT6] [   ]
+     * [   ] [IN7] [ → ] [OUT7] [   ] [IN8] [ → ] [OUT8] [   ]
+     * [ADD] [   ] [   ] [   ] [BACK] [   ] [   ] [   ] [   ]
+     */
     public void openConverterGUI(Player player) {
-        Inventory gui = Bukkit.createInventory(null, 45, Component.text(CONVERTER_GUI_TITLE, NamedTextColor.GOLD)
+        Inventory gui = Bukkit.createInventory(null, 54, Component.text(CONVERTER_GUI_TITLE, NamedTextColor.GOLD)
                 .decoration(TextDecoration.BOLD, true));
 
         // Fill background
         ItemStack background = createItem(Material.BLACK_STAINED_GLASS_PANE, " ", null);
-        for (int i = 0; i < 45; i++) {
+        for (int i = 0; i < 54; i++) {
             gui.setItem(i, background);
         }
 
         ConverterManager cm = plugin.getConverterManager();
+        List<ConversionRecipe> recipes = cm.getRecipes();
 
-        // Input slot (slot 19)
-        gui.setItem(19, createInputSlotItem(cm.getInputItem()));
-
-        // Arrow indicator (slot 22)
-        gui.setItem(22, createArrowItem());
-
-        // Output slot (slot 25)
-        gui.setItem(25, createOutputSlotItem(cm.getOutputItem()));
-
-        // Input amount button (slot 28)
-        gui.setItem(28, createAmountButton("Input Amount", cm.getInputAmount(), true));
-
-        // Output amount button (slot 34)
-        gui.setItem(34, createAmountButton("Output Amount", cm.getOutputAmount(), false));
-
-        // Info (slot 4)
+        // Info item (slot 4)
         gui.setItem(4, createConverterInfoItem());
 
-        // Back button (slot 40)
-        gui.setItem(40, createBackButton());
+        // Recipe slot positions (left column: 0,2,4,6 and right column: 1,3,5,7)
+        // Row 1: slots 10,11,12 (recipe 0) and 14,15,16 (recipe 1)
+        // Row 2: slots 19,20,21 (recipe 2) and 23,24,25 (recipe 3)
+        // Row 3: slots 28,29,30 (recipe 4) and 32,33,34 (recipe 5)
+        // Row 4: slots 37,38,39 (recipe 6) and 41,42,43 (recipe 7)
+        
+        int[][] recipeSlots = {
+            {10, 11, 12}, // Recipe 0
+            {14, 15, 16}, // Recipe 1
+            {19, 20, 21}, // Recipe 2
+            {23, 24, 25}, // Recipe 3
+            {28, 29, 30}, // Recipe 4
+            {32, 33, 34}, // Recipe 5
+            {37, 38, 39}, // Recipe 6
+            {41, 42, 43}  // Recipe 7
+        };
+
+        for (int i = 0; i < recipes.size() && i < recipeSlots.length; i++) {
+            ConversionRecipe recipe = recipes.get(i);
+            int[] slots = recipeSlots[i];
+            
+            // Input item
+            gui.setItem(slots[0], createRecipeInputItem(recipe, i));
+            // Arrow
+            gui.setItem(slots[1], createArrowItem());
+            // Output item
+            gui.setItem(slots[2], createRecipeOutputItem(recipe, i));
+        }
+
+        // Add New Recipe button (slot 45)
+        if (cm.getRecipeCount() < ConverterManager.MAX_RECIPES) {
+            gui.setItem(45, createAddRecipeButton());
+        } else {
+            gui.setItem(45, createMaxRecipesItem());
+        }
+
+        // Back button (slot 49)
+        gui.setItem(49, createBackButton());
+
+        player.openInventory(gui);
+    }
+
+    /**
+     * Opens the Add/Edit Recipe GUI (27 slots)
+     * Layout:
+     * [   ] [   ] [   ] [   ] [INFO] [   ] [   ] [   ] [   ]
+     * [   ] [INPUT] [-1] [+1] [   ] [OUTPUT] [-1] [+1] [   ]
+     * [   ] [DEL] [   ] [   ] [SAVE] [   ] [   ] [BACK] [   ]
+     */
+    public void openEditRecipeGUI(Player player, InventoryClickListener.RecipeEditData editData) {
+        Inventory gui = Bukkit.createInventory(null, 27, Component.text(EDIT_RECIPE_GUI_TITLE, NamedTextColor.AQUA)
+                .decoration(TextDecoration.BOLD, true));
+
+        // Fill background
+        ItemStack background = createItem(Material.BLACK_STAINED_GLASS_PANE, " ", null);
+        for (int i = 0; i < 27; i++) {
+            gui.setItem(i, background);
+        }
+
+        // Info (slot 4)
+        gui.setItem(4, createEditRecipeInfoItem(editData.isNewRecipe()));
+
+        // Input item slot (slot 10)
+        gui.setItem(10, createEditInputSlotItem(editData.getInputItem(), editData.getInputAmount()));
+
+        // Input amount -1 button (slot 11)
+        gui.setItem(11, createAmountAdjustButton(-1, editData.getInputAmount()));
+
+        // Input amount +1 button (slot 12)
+        gui.setItem(12, createAmountAdjustButton(1, editData.getInputAmount()));
+
+        // Output item slot (slot 14)
+        gui.setItem(14, createEditOutputSlotItem(editData.getOutputItem(), editData.getOutputAmount()));
+
+        // Output amount -1 button (slot 15)
+        gui.setItem(15, createAmountAdjustButton(-1, editData.getOutputAmount()));
+
+        // Output amount +1 button (slot 16)
+        gui.setItem(16, createAmountAdjustButton(1, editData.getOutputAmount()));
+
+        // Delete button (slot 19) - only shown when editing existing recipe
+        if (!editData.isNewRecipe()) {
+            gui.setItem(19, createDeleteButton());
+        }
+
+        // Save button (slot 22)
+        gui.setItem(22, createSaveButton());
+
+        // Back/Cancel button (slot 25)
+        gui.setItem(25, createCancelButton());
 
         player.openInventory(gui);
     }
@@ -110,63 +196,7 @@ public class AdminConfigGUI {
         player.openInventory(gui);
     }
 
-    public void openInputAmountGUI(Player player) {
-        Inventory gui = Bukkit.createInventory(null, 27, Component.text(INPUT_AMOUNT_GUI_TITLE, NamedTextColor.AQUA)
-                .decoration(TextDecoration.BOLD, true));
-
-        // Fill background
-        ItemStack background = createItem(Material.BLACK_STAINED_GLASS_PANE, " ", null);
-        for (int i = 0; i < 27; i++) {
-            gui.setItem(i, background);
-        }
-
-        int currentAmount = plugin.getConverterManager().getInputAmount();
-
-        // Decrease buttons
-        gui.setItem(10, createAmountAdjustButton(-10, currentAmount));
-        gui.setItem(11, createAmountAdjustButton(-1, currentAmount));
-
-        // Current amount display
-        gui.setItem(13, createCurrentAmountDisplay(currentAmount, true));
-
-        // Increase buttons
-        gui.setItem(15, createAmountAdjustButton(1, currentAmount));
-        gui.setItem(16, createAmountAdjustButton(10, currentAmount));
-
-        // Back button
-        gui.setItem(22, createBackToConverterButton());
-
-        player.openInventory(gui);
-    }
-
-    public void openOutputAmountGUI(Player player) {
-        Inventory gui = Bukkit.createInventory(null, 27, Component.text(OUTPUT_AMOUNT_GUI_TITLE, NamedTextColor.AQUA)
-                .decoration(TextDecoration.BOLD, true));
-
-        // Fill background
-        ItemStack background = createItem(Material.BLACK_STAINED_GLASS_PANE, " ", null);
-        for (int i = 0; i < 27; i++) {
-            gui.setItem(i, background);
-        }
-
-        int currentAmount = plugin.getConverterManager().getOutputAmount();
-
-        // Decrease buttons
-        gui.setItem(10, createAmountAdjustButton(-10, currentAmount));
-        gui.setItem(11, createAmountAdjustButton(-1, currentAmount));
-
-        // Current amount display
-        gui.setItem(13, createCurrentAmountDisplay(currentAmount, false));
-
-        // Increase buttons
-        gui.setItem(15, createAmountAdjustButton(1, currentAmount));
-        gui.setItem(16, createAmountAdjustButton(10, currentAmount));
-
-        // Back button
-        gui.setItem(22, createBackToConverterButton());
-
-        player.openInventory(gui);
-    }
+    // ===== Item creation methods =====
 
     private ItemStack createConverterConfigItem() {
         ItemStack item = new ItemStack(Material.NETHER_STAR);
@@ -179,9 +209,15 @@ public class AdminConfigGUI {
 
             List<Component> lore = new ArrayList<>();
             lore.add(Component.empty());
-            lore.add(Component.text("Configure the ore converter", NamedTextColor.GRAY)
+            lore.add(Component.text("Configure conversion recipes.", NamedTextColor.GRAY)
                     .decoration(TextDecoration.ITALIC, false));
-            lore.add(Component.text("input/output items and amounts.", NamedTextColor.GRAY)
+            lore.add(Component.text("Add, edit, or delete recipes.", NamedTextColor.GRAY)
+                    .decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.empty());
+            
+            int recipeCount = plugin.getConverterManager().getRecipeCount();
+            lore.add(Component.text("Active Recipes: ", NamedTextColor.GRAY)
+                    .append(Component.text(recipeCount, NamedTextColor.GREEN))
                     .decoration(TextDecoration.ITALIC, false));
             lore.add(Component.empty());
             lore.add(Component.text("Click to configure!", NamedTextColor.YELLOW)
@@ -220,24 +256,26 @@ public class AdminConfigGUI {
         return item;
     }
 
-    private ItemStack createInputSlotItem(Material currentInput) {
-        ItemStack item = new ItemStack(currentInput);
+    private ItemStack createRecipeInputItem(ConversionRecipe recipe, int index) {
+        ItemStack item = new ItemStack(recipe.getInputItem());
+        item.setAmount(Math.min(recipe.getInputAmount(), 64));
         ItemMeta meta = item.getItemMeta();
 
         if (meta != null) {
-            meta.displayName(Component.text("Input Item", NamedTextColor.AQUA)
+            meta.displayName(Component.text("Recipe #" + (index + 1) + " - Input", NamedTextColor.AQUA)
                     .decoration(TextDecoration.ITALIC, false)
                     .decoration(TextDecoration.BOLD, true));
 
             List<Component> lore = new ArrayList<>();
             lore.add(Component.empty());
-            lore.add(Component.text("Current: ", NamedTextColor.GRAY)
-                    .append(Component.text(formatMaterialName(currentInput), NamedTextColor.WHITE))
+            lore.add(Component.text("Item: ", NamedTextColor.GRAY)
+                    .append(Component.text(ConfigUtils.formatMaterialName(recipe.getInputItem()), NamedTextColor.WHITE))
+                    .decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.text("Amount: ", NamedTextColor.GRAY)
+                    .append(Component.text(recipe.getInputAmount(), NamedTextColor.WHITE))
                     .decoration(TextDecoration.ITALIC, false));
             lore.add(Component.empty());
-            lore.add(Component.text("Click with an item to set", NamedTextColor.YELLOW)
-                    .decoration(TextDecoration.ITALIC, false));
-            lore.add(Component.text("as the new input item!", NamedTextColor.YELLOW)
+            lore.add(Component.text("Click to edit this recipe!", NamedTextColor.YELLOW)
                     .decoration(TextDecoration.ITALIC, false));
 
             meta.lore(lore);
@@ -247,24 +285,26 @@ public class AdminConfigGUI {
         return item;
     }
 
-    private ItemStack createOutputSlotItem(Material currentOutput) {
-        ItemStack item = new ItemStack(currentOutput);
+    private ItemStack createRecipeOutputItem(ConversionRecipe recipe, int index) {
+        ItemStack item = new ItemStack(recipe.getOutputItem());
+        item.setAmount(Math.min(recipe.getOutputAmount(), 64));
         ItemMeta meta = item.getItemMeta();
 
         if (meta != null) {
-            meta.displayName(Component.text("Output Item", NamedTextColor.GREEN)
+            meta.displayName(Component.text("Recipe #" + (index + 1) + " - Output", NamedTextColor.GREEN)
                     .decoration(TextDecoration.ITALIC, false)
                     .decoration(TextDecoration.BOLD, true));
 
             List<Component> lore = new ArrayList<>();
             lore.add(Component.empty());
-            lore.add(Component.text("Current: ", NamedTextColor.GRAY)
-                    .append(Component.text(formatMaterialName(currentOutput), NamedTextColor.WHITE))
+            lore.add(Component.text("Item: ", NamedTextColor.GRAY)
+                    .append(Component.text(ConfigUtils.formatMaterialName(recipe.getOutputItem()), NamedTextColor.WHITE))
+                    .decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.text("Amount: ", NamedTextColor.GRAY)
+                    .append(Component.text(recipe.getOutputAmount(), NamedTextColor.WHITE))
                     .decoration(TextDecoration.ITALIC, false));
             lore.add(Component.empty());
-            lore.add(Component.text("Click with an item to set", NamedTextColor.YELLOW)
-                    .decoration(TextDecoration.ITALIC, false));
-            lore.add(Component.text("as the new output item!", NamedTextColor.YELLOW)
+            lore.add(Component.text("Click to edit this recipe!", NamedTextColor.YELLOW)
                     .decoration(TextDecoration.ITALIC, false));
 
             meta.lore(lore);
@@ -279,7 +319,7 @@ public class AdminConfigGUI {
         ItemMeta meta = item.getItemMeta();
 
         if (meta != null) {
-            meta.displayName(Component.text("→ Converts To →", NamedTextColor.YELLOW)
+            meta.displayName(Component.text("→", NamedTextColor.YELLOW)
                     .decoration(TextDecoration.ITALIC, false)
                     .decoration(TextDecoration.BOLD, true));
 
@@ -289,18 +329,133 @@ public class AdminConfigGUI {
         return item;
     }
 
-    private ItemStack createAmountButton(String type, int amount, boolean isInput) {
-        ItemStack item = new ItemStack(isInput ? Material.RED_DYE : Material.GREEN_DYE);
+    private ItemStack createAddRecipeButton() {
+        ItemStack item = new ItemStack(Material.LIME_CONCRETE);
         ItemMeta meta = item.getItemMeta();
 
         if (meta != null) {
-            meta.displayName(Component.text(type + ": " + amount, isInput ? NamedTextColor.RED : NamedTextColor.GREEN)
+            meta.displayName(Component.text("Add New Recipe", NamedTextColor.GREEN)
                     .decoration(TextDecoration.ITALIC, false)
                     .decoration(TextDecoration.BOLD, true));
 
             List<Component> lore = new ArrayList<>();
             lore.add(Component.empty());
-            lore.add(Component.text("Click to change amount!", NamedTextColor.YELLOW)
+            lore.add(Component.text("Click to add a new", NamedTextColor.GRAY)
+                    .decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.text("conversion recipe.", NamedTextColor.GRAY)
+                    .decoration(TextDecoration.ITALIC, false));
+
+            meta.lore(lore);
+            item.setItemMeta(meta);
+        }
+
+        return item;
+    }
+
+    private ItemStack createMaxRecipesItem() {
+        ItemStack item = new ItemStack(Material.GRAY_CONCRETE);
+        ItemMeta meta = item.getItemMeta();
+
+        if (meta != null) {
+            meta.displayName(Component.text("Max Recipes Reached", NamedTextColor.RED)
+                    .decoration(TextDecoration.ITALIC, false)
+                    .decoration(TextDecoration.BOLD, true));
+
+            List<Component> lore = new ArrayList<>();
+            lore.add(Component.empty());
+            lore.add(Component.text("You have reached the maximum", NamedTextColor.GRAY)
+                    .decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.text("of " + ConverterManager.MAX_RECIPES + " recipes.", NamedTextColor.GRAY)
+                    .decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.empty());
+            lore.add(Component.text("Delete a recipe to add more.", NamedTextColor.YELLOW)
+                    .decoration(TextDecoration.ITALIC, false));
+
+            meta.lore(lore);
+            item.setItemMeta(meta);
+        }
+
+        return item;
+    }
+
+    private ItemStack createEditInputSlotItem(Material currentInput, int amount) {
+        ItemStack item = new ItemStack(currentInput);
+        item.setAmount(Math.min(amount, 64));
+        ItemMeta meta = item.getItemMeta();
+
+        if (meta != null) {
+            meta.displayName(Component.text("Input Item", NamedTextColor.AQUA)
+                    .decoration(TextDecoration.ITALIC, false)
+                    .decoration(TextDecoration.BOLD, true));
+
+            List<Component> lore = new ArrayList<>();
+            lore.add(Component.empty());
+            lore.add(Component.text("Current: ", NamedTextColor.GRAY)
+                    .append(Component.text(ConfigUtils.formatMaterialName(currentInput), NamedTextColor.WHITE))
+                    .decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.text("Amount: ", NamedTextColor.GRAY)
+                    .append(Component.text(amount, NamedTextColor.WHITE))
+                    .decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.empty());
+            lore.add(Component.text("Click with an item to change!", NamedTextColor.YELLOW)
+                    .decoration(TextDecoration.ITALIC, false));
+
+            meta.lore(lore);
+            item.setItemMeta(meta);
+        }
+
+        return item;
+    }
+
+    private ItemStack createEditOutputSlotItem(Material currentOutput, int amount) {
+        ItemStack item = new ItemStack(currentOutput);
+        item.setAmount(Math.min(amount, 64));
+        ItemMeta meta = item.getItemMeta();
+
+        if (meta != null) {
+            meta.displayName(Component.text("Output Item", NamedTextColor.GREEN)
+                    .decoration(TextDecoration.ITALIC, false)
+                    .decoration(TextDecoration.BOLD, true));
+
+            List<Component> lore = new ArrayList<>();
+            lore.add(Component.empty());
+            lore.add(Component.text("Current: ", NamedTextColor.GRAY)
+                    .append(Component.text(ConfigUtils.formatMaterialName(currentOutput), NamedTextColor.WHITE))
+                    .decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.text("Amount: ", NamedTextColor.GRAY)
+                    .append(Component.text(amount, NamedTextColor.WHITE))
+                    .decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.empty());
+            lore.add(Component.text("Click with an item to change!", NamedTextColor.YELLOW)
+                    .decoration(TextDecoration.ITALIC, false));
+
+            meta.lore(lore);
+            item.setItemMeta(meta);
+        }
+
+        return item;
+    }
+
+    private ItemStack createEditRecipeInfoItem(boolean isNew) {
+        ItemStack item = new ItemStack(Material.BOOK);
+        ItemMeta meta = item.getItemMeta();
+
+        if (meta != null) {
+            String title = isNew ? "Add New Recipe" : "Edit Recipe";
+            meta.displayName(Component.text(title, NamedTextColor.AQUA)
+                    .decoration(TextDecoration.ITALIC, false)
+                    .decoration(TextDecoration.BOLD, true));
+
+            List<Component> lore = new ArrayList<>();
+            lore.add(Component.empty());
+            lore.add(Component.text("Click on input/output slots", NamedTextColor.GRAY)
+                    .decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.text("with an item to set it.", NamedTextColor.GRAY)
+                    .decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.empty());
+            lore.add(Component.text("Use +/- buttons to adjust", NamedTextColor.GRAY)
+                    .decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.text("the conversion amounts.", NamedTextColor.GRAY)
                     .decoration(TextDecoration.ITALIC, false));
 
             meta.lore(lore);
@@ -315,20 +470,19 @@ public class AdminConfigGUI {
         ItemMeta meta = item.getItemMeta();
 
         if (meta != null) {
-            meta.displayName(Component.text("How to Configure", NamedTextColor.AQUA)
+            meta.displayName(Component.text("Converter Recipes", NamedTextColor.AQUA)
                     .decoration(TextDecoration.ITALIC, false)
                     .decoration(TextDecoration.BOLD, true));
 
             List<Component> lore = new ArrayList<>();
             lore.add(Component.empty());
-            lore.add(Component.text("Drag and drop items onto the", NamedTextColor.GRAY)
+            lore.add(Component.text("Click on any recipe to edit it.", NamedTextColor.GRAY)
                     .decoration(TextDecoration.ITALIC, false));
-            lore.add(Component.text("Input/Output slots to set them.", NamedTextColor.GRAY)
+            lore.add(Component.text("Click Add to create new recipes.", NamedTextColor.GRAY)
                     .decoration(TextDecoration.ITALIC, false));
             lore.add(Component.empty());
-            lore.add(Component.text("Click the amount buttons to", NamedTextColor.GRAY)
-                    .decoration(TextDecoration.ITALIC, false));
-            lore.add(Component.text("adjust conversion ratios.", NamedTextColor.GRAY)
+            lore.add(Component.text("Max recipes: ", NamedTextColor.GRAY)
+                    .append(Component.text(ConverterManager.MAX_RECIPES, NamedTextColor.GREEN))
                     .decoration(TextDecoration.ITALIC, false));
 
             meta.lore(lore);
@@ -353,15 +507,65 @@ public class AdminConfigGUI {
         return item;
     }
 
-    private ItemStack createBackToConverterButton() {
+    private ItemStack createSaveButton() {
+        ItemStack item = new ItemStack(Material.LIME_WOOL);
+        ItemMeta meta = item.getItemMeta();
+
+        if (meta != null) {
+            meta.displayName(Component.text("Save Recipe", NamedTextColor.GREEN)
+                    .decoration(TextDecoration.ITALIC, false)
+                    .decoration(TextDecoration.BOLD, true));
+
+            List<Component> lore = new ArrayList<>();
+            lore.add(Component.empty());
+            lore.add(Component.text("Click to save this recipe.", NamedTextColor.GRAY)
+                    .decoration(TextDecoration.ITALIC, false));
+
+            meta.lore(lore);
+            item.setItemMeta(meta);
+        }
+
+        return item;
+    }
+
+    private ItemStack createDeleteButton() {
+        ItemStack item = new ItemStack(Material.RED_WOOL);
+        ItemMeta meta = item.getItemMeta();
+
+        if (meta != null) {
+            meta.displayName(Component.text("Delete Recipe", NamedTextColor.RED)
+                    .decoration(TextDecoration.ITALIC, false)
+                    .decoration(TextDecoration.BOLD, true));
+
+            List<Component> lore = new ArrayList<>();
+            lore.add(Component.empty());
+            lore.add(Component.text("Click to delete this recipe.", NamedTextColor.GRAY)
+                    .decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.text("This cannot be undone!", NamedTextColor.RED)
+                    .decoration(TextDecoration.ITALIC, false));
+
+            meta.lore(lore);
+            item.setItemMeta(meta);
+        }
+
+        return item;
+    }
+
+    private ItemStack createCancelButton() {
         ItemStack item = new ItemStack(Material.ARROW);
         ItemMeta meta = item.getItemMeta();
 
         if (meta != null) {
-            meta.displayName(Component.text("Back to Converter Config", NamedTextColor.YELLOW)
+            meta.displayName(Component.text("Cancel", NamedTextColor.YELLOW)
                     .decoration(TextDecoration.ITALIC, false)
                     .decoration(TextDecoration.BOLD, true));
 
+            List<Component> lore = new ArrayList<>();
+            lore.add(Component.empty());
+            lore.add(Component.text("Go back without saving.", NamedTextColor.GRAY)
+                    .decoration(TextDecoration.ITALIC, false));
+
+            meta.lore(lore);
             item.setItemMeta(meta);
         }
 
@@ -376,14 +580,14 @@ public class AdminConfigGUI {
             NamedTextColor statusColor = enabled ? NamedTextColor.GREEN : NamedTextColor.RED;
             String status = enabled ? "ENABLED" : "DISABLED";
 
-            meta.displayName(Component.text(formatMaterialName(input), NamedTextColor.GOLD)
+            meta.displayName(Component.text(ConfigUtils.formatMaterialName(input), NamedTextColor.GOLD)
                     .decoration(TextDecoration.ITALIC, false)
                     .decoration(TextDecoration.BOLD, true));
 
             List<Component> lore = new ArrayList<>();
             lore.add(Component.empty());
             lore.add(Component.text("Smelts to: ", NamedTextColor.GRAY)
-                    .append(Component.text(formatMaterialName(output), NamedTextColor.WHITE))
+                    .append(Component.text(ConfigUtils.formatMaterialName(output), NamedTextColor.WHITE))
                     .decoration(TextDecoration.ITALIC, false));
             lore.add(Component.empty());
             lore.add(Component.text("Status: ", NamedTextColor.GRAY)
@@ -434,21 +638,6 @@ public class AdminConfigGUI {
         return item;
     }
 
-    private ItemStack createCurrentAmountDisplay(int amount, boolean isInput) {
-        ItemStack item = new ItemStack(isInput ? Material.RED_WOOL : Material.LIME_WOOL);
-        ItemMeta meta = item.getItemMeta();
-
-        if (meta != null) {
-            meta.displayName(Component.text("Current Amount: " + amount, NamedTextColor.GOLD)
-                    .decoration(TextDecoration.ITALIC, false)
-                    .decoration(TextDecoration.BOLD, true));
-
-            item.setItemMeta(meta);
-        }
-
-        return item;
-    }
-
     private ItemStack createItem(Material material, String name, List<String> loreLines) {
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
@@ -474,25 +663,5 @@ public class AdminConfigGUI {
         }
 
         return item;
-    }
-
-    private String formatMaterialName(Material material) {
-        String name = material.name().toLowerCase().replace("_", " ");
-        StringBuilder result = new StringBuilder();
-        boolean capitalizeNext = true;
-
-        for (char c : name.toCharArray()) {
-            if (c == ' ') {
-                result.append(c);
-                capitalizeNext = true;
-            } else if (capitalizeNext) {
-                result.append(Character.toUpperCase(c));
-                capitalizeNext = false;
-            } else {
-                result.append(c);
-            }
-        }
-
-        return result.toString();
     }
 }
