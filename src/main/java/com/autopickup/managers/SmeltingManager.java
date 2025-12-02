@@ -88,6 +88,7 @@ public class SmeltingManager {
                 plugin.getLogger().warning("Invalid material in config: " + item);
             }
         }
+        plugin.getLogger().info("Loaded " + enabledItems.size() + " enabled auto-smelt items.");
     }
 
     public void saveConfig() {
@@ -96,6 +97,7 @@ public class SmeltingManager {
                 .toList();
         plugin.getConfig().set("auto-smelt.enabled-items", items);
         plugin.saveConfig();
+        plugin.getLogger().info("Saved " + enabledItems.size() + " enabled auto-smelt items to config.");
     }
 
     public boolean canSmelt(Material material) {

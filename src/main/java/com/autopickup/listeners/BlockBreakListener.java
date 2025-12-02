@@ -6,7 +6,6 @@ import com.autopickup.managers.ConverterManager;
 import com.autopickup.managers.PlayerDataManager;
 import com.autopickup.managers.SmeltingManager;
 import org.bukkit.GameMode;
-import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -17,7 +16,6 @@ import org.bukkit.inventory.ItemStack;
 
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Map;
 
 public class BlockBreakListener implements Listener {
 
@@ -72,6 +70,10 @@ public class BlockBreakListener implements Listener {
             // Check for ore converter in offhand
             if (hasConverter && finalDrop.getType() == cm.getInputItem()) {
                 finalDrop = processConverter(finalDrop, cm, player);
+                // If fully converted, skip to next drop
+                if (finalDrop == null) {
+                    continue;
+                }
             }
 
             // Check for auto smelt
@@ -115,11 +117,11 @@ public class BlockBreakListener implements Listener {
             }
         }
 
-        // Return remainder (or air if fully converted)
+        // Return remainder (or null if fully converted)
         if (remainder > 0) {
             return new ItemStack(drop.getType(), remainder);
         } else {
-            return new ItemStack(Material.AIR);
+            return null;
         }
     }
 }

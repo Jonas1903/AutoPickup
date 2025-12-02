@@ -76,5 +76,6 @@ public class AutoPickupPlugin extends JavaPlugin {
         reloadConfig();
         smeltingManager.loadConfig();
         converterManager.loadConfig();
+        playerDataManager.reloadData();
     }
 }

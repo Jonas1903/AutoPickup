@@ -37,6 +37,8 @@ public class ConverterManager {
 
         inputAmount = plugin.getConfig().getInt("ore-converter.input-amount", 64);
         outputAmount = plugin.getConfig().getInt("ore-converter.output-amount", 10);
+        
+        plugin.getLogger().info("Loaded ore converter config: " + inputAmount + "x " + inputItem.name() + " -> " + outputAmount + "x " + outputItem.name());
     }
 
     public void saveConfig() {
@@ -45,6 +47,7 @@ public class ConverterManager {
         plugin.getConfig().set("ore-converter.output-item", outputItem.name());
         plugin.getConfig().set("ore-converter.output-amount", outputAmount);
         plugin.saveConfig();
+        plugin.getLogger().info("Saved ore converter config: " + inputAmount + "x " + inputItem.name() + " -> " + outputAmount + "x " + outputItem.name());
     }
 
     public Material getInputItem() {

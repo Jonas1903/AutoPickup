@@ -37,14 +37,19 @@ public class PlayerDataManager {
         dataConfig = YamlConfiguration.loadConfiguration(dataFile);
 
         // Load all player data
-        if (dataConfig.contains("players")) {
+        if (dataConfig.contains("players") && dataConfig.getConfigurationSection("players") != null) {
             for (String uuidString : dataConfig.getConfigurationSection("players").getKeys(false)) {
-                UUID uuid = UUID.fromString(uuidString);
-                boolean autoPickup = dataConfig.getBoolean("players." + uuidString + ".auto-pickup", true);
-                boolean autoSmelt = dataConfig.getBoolean("players." + uuidString + ".auto-smelt", false);
-                playerDataMap.put(uuid, new PlayerData(autoPickup, autoSmelt));
+                try {
+                    UUID uuid = UUID.fromString(uuidString);
+                    boolean autoPickup = dataConfig.getBoolean("players." + uuidString + ".auto-pickup", true);
+                    boolean autoSmelt = dataConfig.getBoolean("players." + uuidString + ".auto-smelt", false);
+                    playerDataMap.put(uuid, new PlayerData(autoPickup, autoSmelt));
+                } catch (IllegalArgumentException e) {
+                    plugin.getLogger().warning("Invalid UUID in playerdata.yml: " + uuidString);
+                }
             }
         }
+        plugin.getLogger().info("Loaded " + playerDataMap.size() + " player data entries.");
     }
 
     public void saveAllData() {
@@ -56,9 +61,16 @@ public class PlayerDataManager {
 
         try {
             dataConfig.save(dataFile);
+            plugin.getLogger().info("Saved " + playerDataMap.size() + " player data entries.");
         } catch (IOException e) {
             plugin.getLogger().severe("Could not save playerdata.yml: " + e.getMessage());
         }
+    }
+
+    public void reloadData() {
+        saveAllData();
+        playerDataMap.clear();
+        loadAllData();
     }
 
     public PlayerData getPlayerData(Player player) {
