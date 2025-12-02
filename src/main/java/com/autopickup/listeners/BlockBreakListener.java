@@ -6,7 +6,11 @@ import com.autopickup.managers.ConversionRecipe;
 import com.autopickup.managers.ConverterManager;
 import com.autopickup.managers.PlayerDataManager;
 import com.autopickup.managers.SmeltingManager;
+import com.autopickup.utils.ConfigUtils;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.GameMode;
+import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -68,12 +72,12 @@ public class BlockBreakListener implements Listener {
         for (ItemStack drop : drops) {
             ItemStack finalDrop = drop.clone();
 
-            // Check for ore converter in offhand - check ALL recipes
+            // Check for ore converter in offhand - uses accumulator system
             if (hasConverter) {
                 ConversionRecipe recipe = cm.findRecipeForItem(finalDrop.getType());
                 if (recipe != null) {
-                    finalDrop = processConverter(finalDrop, recipe, player);
-                    // If fully converted, skip to next drop
+                    finalDrop = processConverterWithAccumulator(finalDrop, recipe, player, cm);
+                    // If absorbed into accumulator, skip to next drop
                     if (finalDrop == null) {
                         continue;
                     }
@@ -103,29 +107,78 @@ public class BlockBreakListener implements Listener {
         }
     }
 
-    private ItemStack processConverter(ItemStack drop, ConversionRecipe recipe, Player player) {
-        int totalAmount = drop.getAmount();
-        int conversions = recipe.getConversionCount(totalAmount);
-        int remainder = recipe.getRemainder(totalAmount);
-
-        if (conversions > 0) {
-            // Give converted items
-            ItemStack convertedItem = new ItemStack(recipe.getOutputItem(), conversions * recipe.getOutputAmount());
-            HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(convertedItem);
-
+    /**
+     * Process converter with accumulator system - items are absorbed until threshold is reached.
+     */
+    private ItemStack processConverterWithAccumulator(ItemStack drop, ConversionRecipe recipe, Player player, ConverterManager cm) {
+        Material inputMaterial = drop.getType();
+        int dropAmount = drop.getAmount();
+        
+        // Add to accumulator
+        cm.addToAccumulator(player.getUniqueId(), inputMaterial, dropAmount);
+        
+        // Check accumulated amount
+        int accumulated = cm.getAccumulatedAmount(player.getUniqueId(), inputMaterial);
+        int inputRequired = recipe.getInputAmount();
+        
+        if (accumulated >= inputRequired) {
+            // Perform conversion
+            int conversions = accumulated / inputRequired;
+            int remainder = accumulated % inputRequired;
+            
+            // Give converted items using the full ItemStack (preserves custom name, lore, enchants, etc.)
+            ItemStack outputItem = recipe.getOutputItemStack();
+            outputItem.setAmount(conversions * recipe.getOutputAmount());
+            
+            HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(outputItem);
+            
             // Drop any converted items that couldn't fit
             if (!leftover.isEmpty()) {
                 for (ItemStack item : leftover.values()) {
                     player.getWorld().dropItemNaturally(player.getLocation(), item);
                 }
             }
-        }
-
-        // Return remainder (or null if fully converted)
-        if (remainder > 0) {
-            return new ItemStack(drop.getType(), remainder);
+            
+            // Update accumulator with remainder
+            cm.setAccumulator(player.getUniqueId(), inputMaterial, remainder);
+            
+            // Show conversion message
+            sendConversionMessage(player, recipe, conversions, remainder);
         } else {
-            return null;
+            // Show progress in action bar
+            sendProgressActionBar(player, accumulated, inputRequired, inputMaterial);
         }
+        
+        // Return null - item has been absorbed into accumulator or converted
+        return null;
+    }
+    
+    /**
+     * Send action bar showing accumulator progress.
+     */
+    private void sendProgressActionBar(Player player, int accumulated, int required, Material material) {
+        Component message = Component.text("Converter: ", NamedTextColor.GRAY)
+                .append(Component.text(accumulated, NamedTextColor.YELLOW))
+                .append(Component.text("/" + required + " ", NamedTextColor.GOLD))
+                .append(Component.text(ConfigUtils.formatMaterialName(material), NamedTextColor.AQUA));
+        player.sendActionBar(message);
+    }
+    
+    /**
+     * Send message when conversion completes.
+     */
+    private void sendConversionMessage(Player player, ConversionRecipe recipe, int conversions, int remainder) {
+        String outputName = ConfigUtils.formatMaterialName(recipe.getOutputItem());
+        int outputTotal = conversions * recipe.getOutputAmount();
+        
+        Component message = Component.text("Converted! ", NamedTextColor.GREEN)
+                .append(Component.text("+" + outputTotal + " ", NamedTextColor.YELLOW))
+                .append(Component.text(outputName, NamedTextColor.AQUA));
+        
+        if (remainder > 0) {
+            message = message.append(Component.text(" (" + remainder + " remaining)", NamedTextColor.GRAY));
+        }
+        
+        player.sendActionBar(message);
     }
 }

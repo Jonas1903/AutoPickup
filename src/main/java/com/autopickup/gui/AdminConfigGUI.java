@@ -9,6 +9,7 @@ import com.autopickup.utils.ConfigUtils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -23,6 +24,7 @@ import java.util.Map;
 public class AdminConfigGUI {
 
     private final AutoPickupPlugin plugin;
+    private static final PlainTextComponentSerializer PLAIN = PlainTextComponentSerializer.plainText();
     public static final String MAIN_GUI_TITLE = "Admin Configuration";
     public static final String CONVERTER_GUI_TITLE = "Converter Recipes";
     public static final String EDIT_RECIPE_GUI_TITLE = "Edit Recipe";
@@ -148,8 +150,8 @@ public class AdminConfigGUI {
         // Input amount +1 button (slot 12)
         gui.setItem(12, createAmountAdjustButton(1, editData.getInputAmount()));
 
-        // Output item slot (slot 14)
-        gui.setItem(14, createEditOutputSlotItem(editData.getOutputItem(), editData.getOutputAmount()));
+        // Output item slot (slot 14) - Now uses full ItemStack for custom items
+        gui.setItem(14, createEditOutputSlotItem(editData.getOutputItemStack(), editData.getOutputAmount()));
 
         // Output amount -1 button (slot 15)
         gui.setItem(15, createAmountAdjustButton(-1, editData.getOutputAmount()));
@@ -407,12 +409,15 @@ public class AdminConfigGUI {
         return item;
     }
 
-    private ItemStack createEditOutputSlotItem(Material currentOutput, int amount) {
-        ItemStack item = new ItemStack(currentOutput);
+    private ItemStack createEditOutputSlotItem(ItemStack currentOutputStack, int amount) {
+        ItemStack item = currentOutputStack.clone();
         item.setAmount(Math.min(amount, 64));
         ItemMeta meta = item.getItemMeta();
 
         if (meta != null) {
+            // Get the original display name if it has one
+            String displayName = getItemDisplayName(currentOutputStack);
+            
             meta.displayName(Component.text("Output Item", NamedTextColor.GREEN)
                     .decoration(TextDecoration.ITALIC, false)
                     .decoration(TextDecoration.BOLD, true));
@@ -420,11 +425,18 @@ public class AdminConfigGUI {
             List<Component> lore = new ArrayList<>();
             lore.add(Component.empty());
             lore.add(Component.text("Current: ", NamedTextColor.GRAY)
-                    .append(Component.text(ConfigUtils.formatMaterialName(currentOutput), NamedTextColor.WHITE))
+                    .append(Component.text(displayName, NamedTextColor.WHITE))
                     .decoration(TextDecoration.ITALIC, false));
             lore.add(Component.text("Amount: ", NamedTextColor.GRAY)
                     .append(Component.text(amount, NamedTextColor.WHITE))
                     .decoration(TextDecoration.ITALIC, false));
+            
+            // Show if it's a custom item
+            if (currentOutputStack.hasItemMeta() && currentOutputStack.getItemMeta().hasDisplayName()) {
+                lore.add(Component.text("(Custom Item)", NamedTextColor.LIGHT_PURPLE)
+                        .decoration(TextDecoration.ITALIC, true));
+            }
+            
             lore.add(Component.empty());
             lore.add(Component.text("Click with an item to change!", NamedTextColor.YELLOW)
                     .decoration(TextDecoration.ITALIC, false));
@@ -434,6 +446,19 @@ public class AdminConfigGUI {
         }
 
         return item;
+    }
+    
+    /**
+     * Get a display name for an ItemStack, handling custom names and basic items.
+     */
+    private String getItemDisplayName(ItemStack item) {
+        if (item == null || item.getType() == Material.AIR) {
+            return "None";
+        }
+        if (item.hasItemMeta() && item.getItemMeta().hasDisplayName()) {
+            return PLAIN.serialize(item.getItemMeta().displayName());
+        }
+        return ConfigUtils.formatMaterialName(item.getType());
     }
 
     private ItemStack createEditRecipeInfoItem(boolean isNew) {

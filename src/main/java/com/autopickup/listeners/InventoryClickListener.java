@@ -34,13 +34,14 @@ public class InventoryClickListener implements Listener {
     }
     
     /**
-     * Data class to track recipe editing state per player
+     * Data class to track recipe editing state per player.
+     * Now stores full ItemStack for output to support custom items.
      */
     public static class RecipeEditData {
         private int editingIndex = -1; // -1 means new recipe
         private Material inputItem = Material.DIAMOND;
         private int inputAmount = 1;
-        private Material outputItem = Material.EMERALD;
+        private ItemStack outputItemStack = new ItemStack(Material.EMERALD); // Full ItemStack for custom items
         private int outputAmount = 1;
         
         public int getEditingIndex() { return editingIndex; }
@@ -49,8 +50,37 @@ public class InventoryClickListener implements Listener {
         public void setInputItem(Material item) { this.inputItem = item; }
         public int getInputAmount() { return inputAmount; }
         public void setInputAmount(int amount) { this.inputAmount = Math.max(1, Math.min(64, amount)); }
-        public Material getOutputItem() { return outputItem; }
-        public void setOutputItem(Material item) { this.outputItem = item; }
+        
+        /**
+         * Get output item Material (for display purposes).
+         */
+        public Material getOutputItem() { return outputItemStack.getType(); }
+        
+        /**
+         * Set output item from Material (creates a basic ItemStack).
+         */
+        public void setOutputItem(Material item) { 
+            this.outputItemStack = new ItemStack(item);
+        }
+        
+        /**
+         * Get the full output ItemStack (includes custom name, lore, enchants, etc.).
+         */
+        public ItemStack getOutputItemStack() {
+            return outputItemStack.clone();
+        }
+        
+        /**
+         * Set the full output ItemStack (for custom items).
+         */
+        public void setOutputItemStack(ItemStack itemStack) {
+            if (itemStack == null) {
+                throw new IllegalArgumentException("itemStack cannot be null");
+            }
+            this.outputItemStack = itemStack.clone();
+            this.outputItemStack.setAmount(1); // Store as single item
+        }
+        
         public int getOutputAmount() { return outputAmount; }
         public void setOutputAmount(int amount) { this.outputAmount = Math.max(1, Math.min(64, amount)); }
         
@@ -208,7 +238,7 @@ public class InventoryClickListener implements Listener {
             editData.setEditingIndex(-1); // New recipe
             editData.setInputItem(Material.DIAMOND);
             editData.setInputAmount(1);
-            editData.setOutputItem(Material.EMERALD);
+            editData.setOutputItemStack(new ItemStack(Material.EMERALD));
             editData.setOutputAmount(1);
             new AdminConfigGUI(plugin).openEditRecipeGUI(player, editData);
             return;
@@ -237,7 +267,7 @@ public class InventoryClickListener implements Listener {
                 editData.setEditingIndex(recipeIndex);
                 editData.setInputItem(recipe.getInputItem());
                 editData.setInputAmount(recipe.getInputAmount());
-                editData.setOutputItem(recipe.getOutputItem());
+                editData.setOutputItemStack(recipe.getOutputItemStack()); // Store full ItemStack
                 editData.setOutputAmount(recipe.getOutputAmount());
                 new AdminConfigGUI(plugin).openEditRecipeGUI(player, editData);
             }
@@ -312,10 +342,12 @@ public class InventoryClickListener implements Listener {
             return;
         }
         
-        // Output item slot (slot 14) - Allow drag and drop
+        // Output item slot (slot 14) - Allow drag and drop, stores FULL ItemStack
         if (slot == 14) {
             if (cursor != null && cursor.getType() != Material.AIR) {
-                editData.setOutputItem(cursor.getType());
+                // Store the FULL ItemStack including all NBT/custom data
+                editData.setOutputItemStack(cursor.clone());
+                player.sendMessage(ConfigUtils.colorize("&8[&6AutoPickup&8] &aOutput item set to: &f" + getItemDisplayName(cursor)));
                 new AdminConfigGUI(plugin).openEditRecipeGUI(player, editData);
             }
             return;
@@ -346,10 +378,11 @@ public class InventoryClickListener implements Listener {
         
         // Save button (slot 22)
         if (slot == 22) {
+            // Create recipe with full ItemStack
             ConversionRecipe newRecipe = new ConversionRecipe(
                 editData.getInputItem(),
                 editData.getInputAmount(),
-                editData.getOutputItem(),
+                editData.getOutputItemStack(),
                 editData.getOutputAmount()
             );
             
@@ -375,6 +408,19 @@ public class InventoryClickListener implements Listener {
             new AdminConfigGUI(plugin).openConverterGUI(player);
             return;
         }
+    }
+    
+    /**
+     * Get a display name for an ItemStack, handling custom names and basic items.
+     */
+    private String getItemDisplayName(ItemStack item) {
+        if (item == null || item.getType() == Material.AIR) {
+            return "None";
+        }
+        if (item.hasItemMeta() && item.getItemMeta().hasDisplayName()) {
+            return PLAIN.serialize(item.getItemMeta().displayName());
+        }
+        return ConfigUtils.formatMaterialName(item.getType());
     }
 
     private void handleSmeltingGUI(InventoryClickEvent event, Player player) {

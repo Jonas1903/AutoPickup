@@ -6,6 +6,7 @@ import com.autopickup.utils.ConfigUtils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;
@@ -20,6 +21,7 @@ public class OreConverterItem {
 
     private final AutoPickupPlugin plugin;
     private final NamespacedKey converterKey;
+    private static final PlainTextComponentSerializer PLAIN = PlainTextComponentSerializer.plainText();
 
     public OreConverterItem(AutoPickupPlugin plugin) {
         this.plugin = plugin;
@@ -84,12 +86,28 @@ public class OreConverterItem {
     }
 
     private Component getConversionLore(ConversionRecipe recipe) {
+        // Get output item display name (supports custom items)
+        String outputName = getItemDisplayName(recipe.getOutputItemStack());
+        
         return Component.text("  " + recipe.getInputAmount() + "x ", NamedTextColor.WHITE)
                 .append(Component.text(ConfigUtils.formatMaterialName(recipe.getInputItem()), NamedTextColor.AQUA))
                 .append(Component.text(" → ", NamedTextColor.GRAY))
                 .append(Component.text(recipe.getOutputAmount() + "x ", NamedTextColor.WHITE))
-                .append(Component.text(ConfigUtils.formatMaterialName(recipe.getOutputItem()), NamedTextColor.GREEN))
+                .append(Component.text(outputName, NamedTextColor.GREEN))
                 .decoration(TextDecoration.ITALIC, false);
+    }
+    
+    /**
+     * Get a display name for an ItemStack, handling custom names and basic items.
+     */
+    private String getItemDisplayName(ItemStack item) {
+        if (item == null || item.getType() == Material.AIR) {
+            return "None";
+        }
+        if (item.hasItemMeta() && item.getItemMeta().hasDisplayName()) {
+            return PLAIN.serialize(item.getItemMeta().displayName());
+        }
+        return ConfigUtils.formatMaterialName(item.getType());
     }
 
     public boolean isConverterItem(ItemStack item) {
