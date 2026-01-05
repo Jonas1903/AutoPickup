@@ -4,6 +4,7 @@ import com.autopickup.commands.AutoPickupCommand;
 import com.autopickup.items.OreConverterItem;
 import com.autopickup.listeners.BlockBreakListener;
 import com.autopickup.listeners.InventoryClickListener;
+import com.autopickup.listeners.InventoryConversionListener;
 import com.autopickup.listeners.PlayerQuitListener;
 import com.autopickup.managers.ConverterManager;
 import com.autopickup.managers.PlayerDataManager;

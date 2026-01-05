@@ -183,6 +183,28 @@ public class InventoryClickListener implements Listener {
             }
         }
     }
+    
+    @EventHandler
+    public void onInventoryClose(org.bukkit.event.inventory.InventoryCloseEvent event) {
+        if (!(event.getPlayer() instanceof Player player)) {
+            return;
+        }
+        
+        String title = getInventoryTitle(event.getInventory());
+        if (title == null) {
+            return;
+        }
+        
+        // Clear pagination data when player closes recipe GUI
+        if (title.equals(AdminConfigGUI.CONVERTER_GUI_TITLE)) {
+            clearCurrentPage(player);
+        }
+        
+        // Clear edit data when player closes edit recipe GUI
+        if (title.equals(AdminConfigGUI.EDIT_RECIPE_GUI_TITLE)) {
+            clearEditData(player);
+        }
+    }
 
     private void handlePlayerToggleGUI(InventoryClickEvent event, Player player) {
         event.setCancelled(true);

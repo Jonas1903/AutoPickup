@@ -118,10 +118,12 @@ public class InventoryConversionListener implements Listener {
 
     /**
      * Count how many of a specific material the player has in their inventory.
+     * Only counts items in storage slots (not armor/offhand).
      */
     private int countItemsInInventory(PlayerInventory inventory, Material material) {
         int count = 0;
-        for (ItemStack item : inventory.getContents()) {
+        ItemStack[] storageContents = inventory.getStorageContents();
+        for (ItemStack item : storageContents) {
             if (item != null && item.getType() == material) {
                 count += item.getAmount();
             }
@@ -131,15 +133,17 @@ public class InventoryConversionListener implements Listener {
 
     /**
      * Remove a specific amount of a material from player's inventory.
+     * Only removes from storage slots (not armor/offhand).
      */
     private void removeItemsFromInventory(PlayerInventory inventory, Material material, int amount) {
         int remaining = amount;
-        for (int i = 0; i < inventory.getSize() && remaining > 0; i++) {
-            ItemStack item = inventory.getItem(i);
+        ItemStack[] storageContents = inventory.getStorageContents();
+        for (int i = 0; i < storageContents.length && remaining > 0; i++) {
+            ItemStack item = storageContents[i];
             if (item != null && item.getType() == material) {
                 int stackAmount = item.getAmount();
                 if (stackAmount <= remaining) {
-                    inventory.setItem(i, null);
+                    storageContents[i] = null;
                     remaining -= stackAmount;
                 } else {
                     item.setAmount(stackAmount - remaining);
@@ -147,6 +151,8 @@ public class InventoryConversionListener implements Listener {
                 }
             }
         }
+        // Update the inventory with modified storage contents
+        inventory.setStorageContents(storageContents);
     }
 
     /**
