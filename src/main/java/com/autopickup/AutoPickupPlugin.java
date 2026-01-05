@@ -35,6 +35,7 @@ public class AutoPickupPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new BlockBreakListener(this), this);
         getServer().getPluginManager().registerEvents(new InventoryClickListener(this), this);
         getServer().getPluginManager().registerEvents(new PlayerQuitListener(this), this);
+        getServer().getPluginManager().registerEvents(new InventoryConversionListener(this), this);
 
         // Register commands
         AutoPickupCommand commandExecutor = new AutoPickupCommand(this);

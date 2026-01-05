@@ -92,11 +92,11 @@ public class BlockBreakListener implements Listener {
             // Try to add to inventory
             HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(finalDrop);
 
-            // Drop any items that couldn't fit in inventory
+            // If items couldn't fit in inventory, delete them instead of dropping
+            // (leftover items are now deleted rather than dropped on ground)
             if (!leftover.isEmpty()) {
-                for (ItemStack item : leftover.values()) {
-                    block.getWorld().dropItemNaturally(block.getLocation(), item);
-                }
+                // Items are simply not added to the world - they're deleted
+                // Could add optional message to player here if desired
             }
         }
 
@@ -132,11 +132,10 @@ public class BlockBreakListener implements Listener {
             
             HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(outputItem);
             
-            // Drop any converted items that couldn't fit
+            // If converted items couldn't fit, delete them instead of dropping
+            // (leftover items are now deleted rather than dropped on ground)
             if (!leftover.isEmpty()) {
-                for (ItemStack item : leftover.values()) {
-                    player.getWorld().dropItemNaturally(player.getLocation(), item);
-                }
+                // Items are simply not added to the world - they're deleted
             }
             
             // Update accumulator with remainder

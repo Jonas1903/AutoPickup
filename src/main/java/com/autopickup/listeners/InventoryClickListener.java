@@ -28,6 +28,21 @@ public class InventoryClickListener implements Listener {
     
     // Store editing recipe data per player
     private final Map<UUID, RecipeEditData> editingRecipes = new HashMap<>();
+    
+    // Store current page per player for recipe GUI
+    private final Map<UUID, Integer> playerPages = new HashMap<>();
+    
+    public int getCurrentPage(Player player) {
+        return playerPages.getOrDefault(player.getUniqueId(), 0);
+    }
+    
+    public void setCurrentPage(Player player, int page) {
+        playerPages.put(player.getUniqueId(), page);
+    }
+    
+    public void clearCurrentPage(Player player) {
+        playerPages.remove(player.getUniqueId());
+    }
 
     public InventoryClickListener(AutoPickupPlugin plugin) {
         this.plugin = plugin;
@@ -49,7 +64,7 @@ public class InventoryClickListener implements Listener {
         public Material getInputItem() { return inputItem; }
         public void setInputItem(Material item) { this.inputItem = item; }
         public int getInputAmount() { return inputAmount; }
-        public void setInputAmount(int amount) { this.inputAmount = Math.max(1, Math.min(64, amount)); }
+        public void setInputAmount(int amount) { this.inputAmount = Math.max(1, amount); } // Removed 64 max limit
         
         /**
          * Get output item Material (for display purposes).
@@ -82,7 +97,7 @@ public class InventoryClickListener implements Listener {
         }
         
         public int getOutputAmount() { return outputAmount; }
-        public void setOutputAmount(int amount) { this.outputAmount = Math.max(1, Math.min(64, amount)); }
+        public void setOutputAmount(int amount) { this.outputAmount = Math.max(1, amount); } // Removed 64 max limit
         
         public boolean isNewRecipe() { return editingIndex == -1; }
     }
@@ -226,13 +241,19 @@ public class InventoryClickListener implements Listener {
         event.setCancelled(true);
         
         ConverterManager cm = plugin.getConverterManager();
+        int currentPage = getCurrentPage(player);
         
-        // Add New Recipe button (slot 45)
+        // Previous Page button (slot 45)
         if (slot == 45) {
-            if (cm.getRecipeCount() >= ConverterManager.MAX_RECIPES) {
-                player.sendMessage(ConfigUtils.getColoredMessage(plugin.getConfig(), "recipe-limit-reached"));
-                return;
+            if (currentPage > 0) {
+                setCurrentPage(player, currentPage - 1);
+                new AdminConfigGUI(plugin).openConverterGUI(player, currentPage - 1);
             }
+            return;
+        }
+        
+        // Add New Recipe button (slot 46)
+        if (slot == 46) {
             // Open add recipe GUI
             RecipeEditData editData = getOrCreateEditData(player);
             editData.setEditingIndex(-1); // New recipe
@@ -247,7 +268,19 @@ public class InventoryClickListener implements Listener {
         // Back button (slot 49)
         if (slot == 49) {
             clearEditData(player);
+            clearCurrentPage(player);
             new AdminConfigGUI(plugin).openMainGUI(player);
+            return;
+        }
+        
+        // Next Page button (slot 52)
+        if (slot == 52) {
+            int totalRecipes = cm.getRecipeCount();
+            int totalPages = (int) Math.ceil((double) totalRecipes / 8);
+            if (currentPage < totalPages - 1) {
+                setCurrentPage(player, currentPage + 1);
+                new AdminConfigGUI(plugin).openConverterGUI(player, currentPage + 1);
+            }
             return;
         }
         
@@ -258,18 +291,23 @@ public class InventoryClickListener implements Listener {
         // Row 3: slots 28, 29, 30 (recipe 4) and 32, 33, 34 (recipe 5)
         // Row 4: slots 37, 38, 39 (recipe 6) and 41, 42, 43 (recipe 7)
         
-        int recipeIndex = getRecipeIndexFromSlot(slot);
-        if (recipeIndex >= 0 && recipeIndex < cm.getRecipeCount()) {
-            // Edit this recipe
-            ConversionRecipe recipe = cm.getRecipe(recipeIndex);
-            if (recipe != null) {
-                RecipeEditData editData = getOrCreateEditData(player);
-                editData.setEditingIndex(recipeIndex);
-                editData.setInputItem(recipe.getInputItem());
-                editData.setInputAmount(recipe.getInputAmount());
-                editData.setOutputItemStack(recipe.getOutputItemStack()); // Store full ItemStack
-                editData.setOutputAmount(recipe.getOutputAmount());
-                new AdminConfigGUI(plugin).openEditRecipeGUI(player, editData);
+        int pageRecipeIndex = getRecipeIndexFromSlot(slot);
+        if (pageRecipeIndex >= 0) {
+            // Convert page-relative index to absolute recipe index
+            int absoluteRecipeIndex = currentPage * 8 + pageRecipeIndex;
+            
+            if (absoluteRecipeIndex < cm.getRecipeCount()) {
+                // Edit this recipe
+                ConversionRecipe recipe = cm.getRecipe(absoluteRecipeIndex);
+                if (recipe != null) {
+                    RecipeEditData editData = getOrCreateEditData(player);
+                    editData.setEditingIndex(absoluteRecipeIndex);
+                    editData.setInputItem(recipe.getInputItem());
+                    editData.setInputAmount(recipe.getInputAmount());
+                    editData.setOutputItemStack(recipe.getOutputItemStack()); // Store full ItemStack
+                    editData.setOutputAmount(recipe.getOutputAmount());
+                    new AdminConfigGUI(plugin).openEditRecipeGUI(player, editData);
+                }
             }
         }
     }
@@ -369,15 +407,17 @@ public class InventoryClickListener implements Listener {
         
         // Delete button (slot 19) - only for existing recipes
         if (slot == 19 && !editData.isNewRecipe()) {
+            int currentPage = getCurrentPage(player);
             cm.removeRecipe(editData.getEditingIndex());
             player.sendMessage(ConfigUtils.getColoredMessage(plugin.getConfig(), "recipe-deleted"));
             clearEditData(player);
-            new AdminConfigGUI(plugin).openConverterGUI(player);
+            new AdminConfigGUI(plugin).openConverterGUI(player, currentPage);
             return;
         }
         
         // Save button (slot 22)
         if (slot == 22) {
+            int currentPage = getCurrentPage(player);
             // Create recipe with full ItemStack
             ConversionRecipe newRecipe = new ConversionRecipe(
                 editData.getInputItem(),
@@ -398,14 +438,15 @@ public class InventoryClickListener implements Listener {
             }
             
             clearEditData(player);
-            new AdminConfigGUI(plugin).openConverterGUI(player);
+            new AdminConfigGUI(plugin).openConverterGUI(player, currentPage);
             return;
         }
         
         // Back/Cancel button (slot 25)
         if (slot == 25) {
+            int currentPage = getCurrentPage(player);
             clearEditData(player);
-            new AdminConfigGUI(plugin).openConverterGUI(player);
+            new AdminConfigGUI(plugin).openConverterGUI(player, currentPage);
             return;
         }
     }
