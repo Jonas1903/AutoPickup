@@ -19,9 +19,6 @@ public class ConverterManager {
     // Accumulator system - tracks mined items per player per material
     private final Map<UUID, Map<Material, Integer>> playerAccumulators = new HashMap<>();
     
-    // Maximum number of recipes allowed
-    public static final int MAX_RECIPES = 8;
-    
     // Default output material for backward compatibility
     private static final Material DEFAULT_OUTPUT_MATERIAL = Material.AMETHYST_SHARD;
 
@@ -226,9 +223,6 @@ public class ConverterManager {
      * Add a new recipe.
      */
     public boolean addRecipe(ConversionRecipe recipe) {
-        if (recipes.size() >= MAX_RECIPES) {
-            return false;
-        }
         recipes.add(recipe);
         saveRecipes();
         return true;

@@ -4,6 +4,7 @@ import com.autopickup.commands.AutoPickupCommand;
 import com.autopickup.items.OreConverterItem;
 import com.autopickup.listeners.BlockBreakListener;
 import com.autopickup.listeners.InventoryClickListener;
+import com.autopickup.listeners.InventoryConversionListener;
 import com.autopickup.listeners.PlayerQuitListener;
 import com.autopickup.managers.ConverterManager;
 import com.autopickup.managers.PlayerDataManager;
@@ -35,6 +36,7 @@ public class AutoPickupPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new BlockBreakListener(this), this);
         getServer().getPluginManager().registerEvents(new InventoryClickListener(this), this);
         getServer().getPluginManager().registerEvents(new PlayerQuitListener(this), this);
+        getServer().getPluginManager().registerEvents(new InventoryConversionListener(this), this);
 
         // Register commands
         AutoPickupCommand commandExecutor = new AutoPickupCommand(this);

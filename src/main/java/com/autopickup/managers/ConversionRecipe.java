@@ -15,13 +15,13 @@ public class ConversionRecipe {
 
     public ConversionRecipe(Material inputItem, int inputAmount, ItemStack outputItemStack, int outputAmount) {
         this.inputItem = inputItem;
-        this.inputAmount = Math.max(1, Math.min(64, inputAmount));
+        this.inputAmount = Math.max(1, inputAmount); // Removed 64 max limit
         if (outputItemStack == null) {
             throw new IllegalArgumentException("outputItemStack cannot be null");
         }
         this.outputItemStack = outputItemStack.clone();
         this.outputItemStack.setAmount(1); // Store as single item
-        this.outputAmount = Math.max(1, Math.min(64, outputAmount));
+        this.outputAmount = Math.max(1, outputAmount); // Removed 64 max limit
     }
 
     /**
@@ -44,7 +44,7 @@ public class ConversionRecipe {
     }
 
     public void setInputAmount(int inputAmount) {
-        this.inputAmount = Math.max(1, Math.min(64, inputAmount));
+        this.inputAmount = Math.max(1, inputAmount); // Removed 64 max limit
     }
 
     /**
@@ -84,7 +84,7 @@ public class ConversionRecipe {
     }
 
     public void setOutputAmount(int outputAmount) {
-        this.outputAmount = Math.max(1, Math.min(64, outputAmount));
+        this.outputAmount = Math.max(1, outputAmount); // Removed 64 max limit
     }
 
     /**

@@ -29,6 +29,9 @@ public class AdminConfigGUI {
     public static final String CONVERTER_GUI_TITLE = "Converter Recipes";
     public static final String EDIT_RECIPE_GUI_TITLE = "Edit Recipe";
     public static final String SMELTING_GUI_TITLE = "Auto Smelt Config";
+    
+    // Pagination support - 8 recipes per page
+    private static final int RECIPES_PER_PAGE = 8;
 
     public AdminConfigGUI(AutoPickupPlugin plugin) {
         this.plugin = plugin;
@@ -54,16 +57,25 @@ public class AdminConfigGUI {
     }
 
     /**
-     * Opens the multi-recipe converter GUI (54 slots)
+     * Opens the multi-recipe converter GUI (54 slots) with pagination support
      * Layout:
      * [Info] [   ] [   ] [   ] [   ] [   ] [   ] [   ] [   ]
      * [   ] [IN1] [ → ] [OUT1] [   ] [IN2] [ → ] [OUT2] [   ]
      * [   ] [IN3] [ → ] [OUT3] [   ] [IN4] [ → ] [OUT4] [   ]
      * [   ] [IN5] [ → ] [OUT5] [   ] [IN6] [ → ] [OUT6] [   ]
      * [   ] [IN7] [ → ] [OUT7] [   ] [IN8] [ → ] [OUT8] [   ]
-     * [ADD] [   ] [   ] [   ] [BACK] [   ] [   ] [   ] [   ]
+     * [PREV] [ADD] [   ] [   ] [BACK] [   ] [   ] [NEXT] [   ]
      */
     public void openConverterGUI(Player player) {
+        openConverterGUI(player, 0);
+    }
+    
+    /**
+     * Opens the multi-recipe converter GUI with pagination
+     * @param player The player to show the GUI to
+     * @param page The page number (0-indexed)
+     */
+    public void openConverterGUI(Player player, int page) {
         Inventory gui = Bukkit.createInventory(null, 54, Component.text(CONVERTER_GUI_TITLE, NamedTextColor.GOLD)
                 .decoration(TextDecoration.BOLD, true));
 
@@ -75,9 +87,16 @@ public class AdminConfigGUI {
 
         ConverterManager cm = plugin.getConverterManager();
         List<ConversionRecipe> recipes = cm.getRecipes();
+        
+        // Calculate pagination
+        int totalPages = (int) Math.ceil((double) recipes.size() / RECIPES_PER_PAGE);
+        if (totalPages == 0) totalPages = 1;
+        page = Math.max(0, Math.min(page, totalPages - 1)); // Clamp page to valid range
+        int startIndex = page * RECIPES_PER_PAGE;
+        int endIndex = Math.min(startIndex + RECIPES_PER_PAGE, recipes.size());
 
-        // Info item (slot 4)
-        gui.setItem(4, createConverterInfoItem());
+        // Info item (slot 4) - now shows page info
+        gui.setItem(4, createConverterInfoItem(page + 1, totalPages, recipes.size()));
 
         // Recipe slot positions (left column: 0,2,4,6 and right column: 1,3,5,7)
         // Row 1: slots 10,11,12 (recipe 0) and 14,15,16 (recipe 1)
@@ -96,27 +115,35 @@ public class AdminConfigGUI {
             {41, 42, 43}  // Recipe 7
         };
 
-        for (int i = 0; i < recipes.size() && i < recipeSlots.length; i++) {
-            ConversionRecipe recipe = recipes.get(i);
+        // Display recipes for current page
+        for (int i = 0; i < RECIPES_PER_PAGE && (startIndex + i) < endIndex; i++) {
+            ConversionRecipe recipe = recipes.get(startIndex + i);
             int[] slots = recipeSlots[i];
+            int actualRecipeIndex = startIndex + i;
             
             // Input item
-            gui.setItem(slots[0], createRecipeInputItem(recipe, i));
+            gui.setItem(slots[0], createRecipeInputItem(recipe, actualRecipeIndex));
             // Arrow
             gui.setItem(slots[1], createArrowItem());
             // Output item
-            gui.setItem(slots[2], createRecipeOutputItem(recipe, i));
+            gui.setItem(slots[2], createRecipeOutputItem(recipe, actualRecipeIndex));
+        }
+        
+        // Previous Page button (slot 45) - only show if not on first page
+        if (page > 0) {
+            gui.setItem(45, createPreviousPageButton());
         }
 
-        // Add New Recipe button (slot 45)
-        if (cm.getRecipeCount() < ConverterManager.MAX_RECIPES) {
-            gui.setItem(45, createAddRecipeButton());
-        } else {
-            gui.setItem(45, createMaxRecipesItem());
-        }
+        // Add New Recipe button (slot 46)
+        gui.setItem(46, createAddRecipeButton());
 
         // Back button (slot 49)
         gui.setItem(49, createBackButton());
+        
+        // Next Page button (slot 52) - only show if there are more pages
+        if (page < totalPages - 1) {
+            gui.setItem(52, createNextPageButton());
+        }
 
         player.openInventory(gui);
     }
@@ -353,24 +380,44 @@ public class AdminConfigGUI {
 
         return item;
     }
-
-    private ItemStack createMaxRecipesItem() {
-        ItemStack item = new ItemStack(Material.GRAY_CONCRETE);
+    
+    private ItemStack createPreviousPageButton() {
+        ItemStack item = new ItemStack(Material.YELLOW_CONCRETE);
         ItemMeta meta = item.getItemMeta();
 
         if (meta != null) {
-            meta.displayName(Component.text("Max Recipes Reached", NamedTextColor.RED)
+            meta.displayName(Component.text("← Previous Page", NamedTextColor.YELLOW)
                     .decoration(TextDecoration.ITALIC, false)
                     .decoration(TextDecoration.BOLD, true));
 
             List<Component> lore = new ArrayList<>();
             lore.add(Component.empty());
-            lore.add(Component.text("You have reached the maximum", NamedTextColor.GRAY)
+            lore.add(Component.text("Click to go to", NamedTextColor.GRAY)
                     .decoration(TextDecoration.ITALIC, false));
-            lore.add(Component.text("of " + ConverterManager.MAX_RECIPES + " recipes.", NamedTextColor.GRAY)
+            lore.add(Component.text("the previous page.", NamedTextColor.GRAY)
                     .decoration(TextDecoration.ITALIC, false));
+
+            meta.lore(lore);
+            item.setItemMeta(meta);
+        }
+
+        return item;
+    }
+    
+    private ItemStack createNextPageButton() {
+        ItemStack item = new ItemStack(Material.YELLOW_CONCRETE);
+        ItemMeta meta = item.getItemMeta();
+
+        if (meta != null) {
+            meta.displayName(Component.text("Next Page →", NamedTextColor.YELLOW)
+                    .decoration(TextDecoration.ITALIC, false)
+                    .decoration(TextDecoration.BOLD, true));
+
+            List<Component> lore = new ArrayList<>();
             lore.add(Component.empty());
-            lore.add(Component.text("Delete a recipe to add more.", NamedTextColor.YELLOW)
+            lore.add(Component.text("Click to go to", NamedTextColor.GRAY)
+                    .decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.text("the next page.", NamedTextColor.GRAY)
                     .decoration(TextDecoration.ITALIC, false));
 
             meta.lore(lore);
@@ -490,7 +537,7 @@ public class AdminConfigGUI {
         return item;
     }
 
-    private ItemStack createConverterInfoItem() {
+    private ItemStack createConverterInfoItem(int currentPage, int totalPages, int totalRecipes) {
         ItemStack item = new ItemStack(Material.BOOK);
         ItemMeta meta = item.getItemMeta();
 
@@ -506,8 +553,11 @@ public class AdminConfigGUI {
             lore.add(Component.text("Click Add to create new recipes.", NamedTextColor.GRAY)
                     .decoration(TextDecoration.ITALIC, false));
             lore.add(Component.empty());
-            lore.add(Component.text("Max recipes: ", NamedTextColor.GRAY)
-                    .append(Component.text(ConverterManager.MAX_RECIPES, NamedTextColor.GREEN))
+            lore.add(Component.text("Total recipes: ", NamedTextColor.GRAY)
+                    .append(Component.text(totalRecipes, NamedTextColor.GREEN))
+                    .decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.text("Page: ", NamedTextColor.GRAY)
+                    .append(Component.text(currentPage + "/" + totalPages, NamedTextColor.YELLOW))
                     .decoration(TextDecoration.ITALIC, false));
 
             meta.lore(lore);
