@@ -46,8 +46,7 @@ public class AutoPickupPlugin extends JavaPlugin {
         getCommand("autopickup").setTabCompleter(commandExecutor);
 
         // Start periodic auto-conversion task
-        autoConversionTask = new AutoConversionTask(this);
-        autoConversionTask.start();
+        startAutoConversionTask();
 
         getLogger().info("AutoPickup has been enabled!");
     }
@@ -65,6 +64,17 @@ public class AutoPickupPlugin extends JavaPlugin {
         }
 
         getLogger().info("AutoPickup has been disabled!");
+    }
+
+    /**
+     * Start or restart the auto-conversion task with current config settings.
+     */
+    private void startAutoConversionTask() {
+        if (autoConversionTask != null) {
+            autoConversionTask.cancel();
+        }
+        autoConversionTask = new AutoConversionTask(this);
+        autoConversionTask.start();
     }
 
     public static AutoPickupPlugin getInstance() {
@@ -94,10 +104,6 @@ public class AutoPickupPlugin extends JavaPlugin {
         playerDataManager.reloadData();
         
         // Restart auto-conversion task with new interval
-        if (autoConversionTask != null) {
-            autoConversionTask.cancel();
-        }
-        autoConversionTask = new AutoConversionTask(this);
-        autoConversionTask.start();
+        startAutoConversionTask();
     }
 }

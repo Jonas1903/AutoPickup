@@ -73,21 +73,40 @@ public class AutoConversionTask extends BukkitRunnable {
     /**
      * Count how many of a specific material the player has in their inventory.
      * Only counts items in storage slots (not armor/offhand).
+     * Only counts plain vanilla items without custom NBT data.
      */
     private int countItemsInInventory(PlayerInventory inventory, Material material) {
         int count = 0;
         ItemStack[] storageContents = inventory.getStorageContents();
         for (ItemStack item : storageContents) {
             if (item != null && item.getType() == material) {
-                count += item.getAmount();
+                // Only count items without custom NBT data to avoid converting enchanted/custom items
+                if (!item.hasItemMeta() || !hasCustomData(item)) {
+                    count += item.getAmount();
+                }
             }
         }
         return count;
+    }
+    
+    /**
+     * Check if an item has custom data (display name, lore, enchantments, etc.)
+     */
+    private boolean hasCustomData(ItemStack item) {
+        if (!item.hasItemMeta()) {
+            return false;
+        }
+        var meta = item.getItemMeta();
+        return meta.hasDisplayName() || 
+               meta.hasLore() || 
+               meta.hasEnchants() || 
+               meta.hasAttributeModifiers();
     }
 
     /**
      * Remove a specific amount of a material from player's inventory.
      * Only removes from storage slots (not armor/offhand).
+     * Only removes plain vanilla items without custom NBT data.
      * @return true if the full amount was removed, false otherwise
      */
     private boolean removeItemsFromInventory(PlayerInventory inventory, Material material, int amount) {
@@ -97,13 +116,16 @@ public class AutoConversionTask extends BukkitRunnable {
         for (int i = 0; i < storageContents.length && remaining > 0; i++) {
             ItemStack item = storageContents[i];
             if (item != null && item.getType() == material) {
-                int stackAmount = item.getAmount();
-                if (stackAmount <= remaining) {
-                    storageContents[i] = null;
-                    remaining -= stackAmount;
-                } else {
-                    item.setAmount(stackAmount - remaining);
-                    remaining = 0;
+                // Only remove items without custom NBT data to avoid removing enchanted/custom items
+                if (!item.hasItemMeta() || !hasCustomData(item)) {
+                    int stackAmount = item.getAmount();
+                    if (stackAmount <= remaining) {
+                        storageContents[i] = null;
+                        remaining -= stackAmount;
+                    } else {
+                        item.setAmount(stackAmount - remaining);
+                        remaining = 0;
+                    }
                 }
             }
         }
