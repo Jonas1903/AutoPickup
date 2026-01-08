@@ -5,6 +5,7 @@ import com.autopickup.items.OreConverterItem;
 import com.autopickup.managers.ConversionRecipe;
 import com.autopickup.managers.ConverterManager;
 import com.autopickup.utils.ConfigUtils;
+import com.autopickup.utils.InventoryUtils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Material;
@@ -74,7 +75,7 @@ public class InventoryConversionListener implements Listener {
             int inputRequired = recipe.getInputAmount();
             
             // Count how many of the input item the player has
-            int totalInputInInventory = countItemsInInventory(inventory, inputMaterial);
+            int totalInputInInventory = InventoryUtils.countItemsInInventory(inventory, inputMaterial);
             
             // Calculate how many conversions we can do
             int possibleConversions = totalInputInInventory / inputRequired;
@@ -82,12 +83,12 @@ public class InventoryConversionListener implements Listener {
             if (possibleConversions > 0) {
                 // Remove input items from inventory
                 int toRemove = possibleConversions * inputRequired;
-                removeItemsFromInventory(inventory, inputMaterial, toRemove);
+                InventoryUtils.removeItemsFromInventory(inventory, inputMaterial, toRemove);
                 
                 // Give output items to player
                 ItemStack outputItem = recipe.getOutputItemStack();
                 int outputAmount = possibleConversions * recipe.getOutputAmount();
-                giveItemsToPlayer(player, outputItem, outputAmount);
+                InventoryUtils.giveItemsToPlayer(player, outputItem, outputAmount);
                 
                 // Track conversion
                 conversionsPerRecipe.put(recipe, possibleConversions);
@@ -113,77 +114,6 @@ public class InventoryConversionListener implements Listener {
                         .append(Component.text(" → ", NamedTextColor.GOLD))
                         .append(Component.text(totalOutput + "x " + outputName, NamedTextColor.AQUA)));
             }
-        }
-    }
-
-    /**
-     * Count how many of a specific material the player has in their inventory.
-     * Only counts items in storage slots (not armor/offhand).
-     */
-    private int countItemsInInventory(PlayerInventory inventory, Material material) {
-        int count = 0;
-        ItemStack[] storageContents = inventory.getStorageContents();
-        for (ItemStack item : storageContents) {
-            if (item != null && item.getType() == material) {
-                count += item.getAmount();
-            }
-        }
-        return count;
-    }
-
-    /**
-     * Remove a specific amount of a material from player's inventory.
-     * Only removes from storage slots (not armor/offhand).
-     */
-    private void removeItemsFromInventory(PlayerInventory inventory, Material material, int amount) {
-        int remaining = amount;
-        ItemStack[] storageContents = inventory.getStorageContents();
-        for (int i = 0; i < storageContents.length && remaining > 0; i++) {
-            ItemStack item = storageContents[i];
-            if (item != null && item.getType() == material) {
-                int stackAmount = item.getAmount();
-                if (stackAmount <= remaining) {
-                    storageContents[i] = null;
-                    remaining -= stackAmount;
-                } else {
-                    item.setAmount(stackAmount - remaining);
-                    remaining = 0;
-                }
-            }
-        }
-        // Update the inventory with modified storage contents
-        inventory.setStorageContents(storageContents);
-    }
-
-    /**
-     * Give items to player, handling stacking and overflow deletion.
-     */
-    private void giveItemsToPlayer(Player player, ItemStack baseItem, int totalAmount) {
-        PlayerInventory inventory = player.getInventory();
-        int remaining = totalAmount;
-        
-        while (remaining > 0) {
-            ItemStack toGive = baseItem.clone();
-            int stackSize = Math.min(remaining, toGive.getMaxStackSize());
-            toGive.setAmount(stackSize);
-            
-            HashMap<Integer, ItemStack> leftover = inventory.addItem(toGive);
-            
-            // If items couldn't fit, they are deleted (as per requirement #3)
-            if (!leftover.isEmpty()) {
-                int leftoverAmount = 0;
-                for (ItemStack item : leftover.values()) {
-                    leftoverAmount += item.getAmount();
-                }
-                // Inform player that some items were deleted
-                if (leftoverAmount > 0) {
-                    player.sendMessage(Component.text("Inventory full! ", NamedTextColor.RED)
-                            .append(Component.text(leftoverAmount + " items deleted.", NamedTextColor.GRAY)));
-                }
-                break;
-            }
-            
-            remaining -= stackSize;
         }
     }
 }

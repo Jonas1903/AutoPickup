@@ -9,6 +9,7 @@ import com.autopickup.listeners.PlayerQuitListener;
 import com.autopickup.managers.ConverterManager;
 import com.autopickup.managers.PlayerDataManager;
 import com.autopickup.managers.SmeltingManager;
+import com.autopickup.tasks.AutoConversionTask;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class AutoPickupPlugin extends JavaPlugin {
@@ -18,6 +19,7 @@ public class AutoPickupPlugin extends JavaPlugin {
     private SmeltingManager smeltingManager;
     private ConverterManager converterManager;
     private OreConverterItem oreConverterItem;
+    private AutoConversionTask autoConversionTask;
 
     @Override
     public void onEnable() {
@@ -43,17 +45,41 @@ public class AutoPickupPlugin extends JavaPlugin {
         getCommand("autopickup").setExecutor(commandExecutor);
         getCommand("autopickup").setTabCompleter(commandExecutor);
 
+        // Start periodic auto-conversion task
+        startAutoConversionTask();
+
         getLogger().info("AutoPickup has been enabled!");
     }
 
     @Override
     public void onDisable() {
+        // Cancel periodic task
+        if (autoConversionTask != null) {
+            autoConversionTask.cancel();
+        }
+
         // Save player data
         if (playerDataManager != null) {
             playerDataManager.saveAllData();
         }
 
         getLogger().info("AutoPickup has been disabled!");
+    }
+
+    /**
+     * Start or restart the auto-conversion task with current config settings.
+     */
+    private void startAutoConversionTask() {
+        try {
+            if (autoConversionTask != null) {
+                autoConversionTask.cancel();
+            }
+            autoConversionTask = new AutoConversionTask(this);
+            autoConversionTask.start();
+        } catch (Exception e) {
+            getLogger().severe("Failed to start auto-conversion task: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     public static AutoPickupPlugin getInstance() {
@@ -81,5 +107,8 @@ public class AutoPickupPlugin extends JavaPlugin {
         smeltingManager.loadConfig();
         converterManager.loadConfig();
         playerDataManager.reloadData();
+        
+        // Restart auto-conversion task with new interval
+        startAutoConversionTask();
     }
 }
