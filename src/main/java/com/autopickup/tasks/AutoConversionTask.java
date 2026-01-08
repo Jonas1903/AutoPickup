@@ -20,7 +20,6 @@ import java.util.Map;
 public class AutoConversionTask extends BukkitRunnable {
 
     private final AutoPickupPlugin plugin;
-    private static final int CHECK_INTERVAL_TICKS = 100; // 5 seconds (20 ticks = 1 second)
 
     public AutoConversionTask(AutoPickupPlugin plugin) {
         this.plugin = plugin;
@@ -143,6 +142,12 @@ public class AutoConversionTask extends BukkitRunnable {
      * Start the periodic task.
      */
     public void start() {
-        this.runTaskTimer(plugin, CHECK_INTERVAL_TICKS, CHECK_INTERVAL_TICKS);
+        // Get interval from config (in seconds), default to 5 seconds
+        int intervalSeconds = plugin.getConfig().getInt("ore-converter.auto-conversion-interval", 5);
+        // Convert to ticks (20 ticks = 1 second)
+        int intervalTicks = intervalSeconds * 20;
+        
+        this.runTaskTimer(plugin, intervalTicks, intervalTicks);
+        plugin.getLogger().info("Auto-conversion task started with interval: " + intervalSeconds + " seconds");
     }
 }

@@ -92,5 +92,12 @@ public class AutoPickupPlugin extends JavaPlugin {
         smeltingManager.loadConfig();
         converterManager.loadConfig();
         playerDataManager.reloadData();
+        
+        // Restart auto-conversion task with new interval
+        if (autoConversionTask != null) {
+            autoConversionTask.cancel();
+        }
+        autoConversionTask = new AutoConversionTask(this);
+        autoConversionTask.start();
     }
 }

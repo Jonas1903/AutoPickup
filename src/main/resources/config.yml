@@ -16,6 +16,8 @@ auto-smelt:
 
 # Ore converter settings - supports multiple recipes
 ore-converter:
+  # Auto-conversion interval in seconds (how often to check player inventories)
+  auto-conversion-interval: 5
   recipes:
     - input-item: DIAMOND
       input-amount: 64
