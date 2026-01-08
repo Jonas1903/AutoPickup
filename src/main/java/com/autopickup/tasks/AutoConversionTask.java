@@ -74,6 +74,8 @@ public class AutoConversionTask extends BukkitRunnable {
     public void start() {
         // Get interval from config (in seconds), default to 5 seconds
         int intervalSeconds = plugin.getConfig().getInt("ore-converter.auto-conversion-interval", 5);
+        // Validate interval is positive
+        intervalSeconds = Math.max(1, intervalSeconds);
         // Convert to ticks (20 ticks = 1 second)
         int intervalTicks = intervalSeconds * 20;
         

@@ -70,11 +70,16 @@ public class AutoPickupPlugin extends JavaPlugin {
      * Start or restart the auto-conversion task with current config settings.
      */
     private void startAutoConversionTask() {
-        if (autoConversionTask != null) {
-            autoConversionTask.cancel();
+        try {
+            if (autoConversionTask != null) {
+                autoConversionTask.cancel();
+            }
+            autoConversionTask = new AutoConversionTask(this);
+            autoConversionTask.start();
+        } catch (Exception e) {
+            getLogger().severe("Failed to start auto-conversion task: " + e.getMessage());
+            e.printStackTrace();
         }
-        autoConversionTask = new AutoConversionTask(this);
-        autoConversionTask.start();
     }
 
     public static AutoPickupPlugin getInstance() {

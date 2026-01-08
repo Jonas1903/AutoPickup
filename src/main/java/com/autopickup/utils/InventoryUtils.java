@@ -58,7 +58,8 @@ public class InventoryUtils {
         return meta.hasDisplayName() || 
                meta.hasLore() || 
                meta.hasEnchants() || 
-               meta.hasAttributeModifiers();
+               meta.hasAttributeModifiers() ||
+               meta.hasCustomModelData();
     }
 
     /**
