@@ -21,3 +21,6 @@ permissions:
   autopickup.converter:
     description: Use ore converter item
     default: true
+  autopickup.autoconvert:
+    description: Enable automatic periodic inventory conversion
+    default: true

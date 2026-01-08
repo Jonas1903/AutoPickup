@@ -9,6 +9,7 @@ import com.autopickup.listeners.PlayerQuitListener;
 import com.autopickup.managers.ConverterManager;
 import com.autopickup.managers.PlayerDataManager;
 import com.autopickup.managers.SmeltingManager;
+import com.autopickup.tasks.AutoConversionTask;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class AutoPickupPlugin extends JavaPlugin {
@@ -18,6 +19,7 @@ public class AutoPickupPlugin extends JavaPlugin {
     private SmeltingManager smeltingManager;
     private ConverterManager converterManager;
     private OreConverterItem oreConverterItem;
+    private AutoConversionTask autoConversionTask;
 
     @Override
     public void onEnable() {
@@ -43,11 +45,20 @@ public class AutoPickupPlugin extends JavaPlugin {
         getCommand("autopickup").setExecutor(commandExecutor);
         getCommand("autopickup").setTabCompleter(commandExecutor);
 
+        // Start periodic auto-conversion task
+        autoConversionTask = new AutoConversionTask(this);
+        autoConversionTask.start();
+
         getLogger().info("AutoPickup has been enabled!");
     }
 
     @Override
     public void onDisable() {
+        // Cancel periodic task
+        if (autoConversionTask != null) {
+            autoConversionTask.cancel();
+        }
+
         // Save player data
         if (playerDataManager != null) {
             playerDataManager.saveAllData();
